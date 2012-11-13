@@ -955,22 +955,22 @@ void foldLength(void)//chenlu
 	}
 	printf("%g\n",length/2.0);
 }
-void help(void)
+void printHelp(void)
 {
 	printf("\
- Make a model from a mesh, initialise it,\n\
- simulate it, save the result, free it\n\
- \n\
+Make a model from a mesh, initialise it,\n\
+simulate it, save the result, free it\n\
+\n\
  -i             Mesh that gives the shape of the model surface\n\
  -o             File where the deformed mesh will be saved\n\
  -Ectx          Young modulus [default: 400000]\n\
- -Pctx          Plasticity constant of the cortical layer [default: 0.006125]\n\
+ -Pctx          Plasticity constant of the cortical layer [default: 0.00 6125]\n\
  -Efib          Elasticity of the radial fibres [default: 1400]\n\
  -Pfib          Plasticity of the radial fibres [default: 0.00001]\n\
  -nu            Poisson ratio [default: 0.33]\n\
  -rho           Density of the material (mass/volume) [default: 1000]\n\
  -thickness     Thickness of the cortical layer [default: 0.4]\n\
- -growth		Target volume as a fraction of the initial volume [default: 2.5]\n\
+ -growth        Target volume as a fraction of the initial volume [default: 2.5]\n\
  -Tgrowth       Time constant of the cortical layer growth [default: 0.1]\n\
  -niter         Number of iterations [default: 100]\n\
  -surf          Surfaces to save: 1=external surface, 2=internal surface, 3=both [default: 1]\n\
@@ -990,7 +990,7 @@ int main(int argc, char *argv[])
 	float	growth=2.5;
 	float	Tgrowth=0.5;
 	float	Ectx=400000;
-	float	Pctx=0.006125;
+	float	Pctx=0.0006125;
 	float	Efib=1500;
 	float	Pfib=0.025;
 	float	nu=0.33;
@@ -1045,7 +1045,7 @@ int main(int argc, char *argv[])
 			step=atoi(argv[++i]);
 		else
 		if(strcmp(argv[i],"-h")==0)
-			help();
+			printHelp();
 		else
 			printf("WARNING: Unknown argument %s\n",argv[i]);
 		i++;
@@ -1103,7 +1103,7 @@ int main(int argc, char *argv[])
 		
 		model_rotation(&m);						// compute R
 		model_assemble(&m);						// compute f0=R*K, K'=R*K*R'
-		model_externalForces(&m,Pfib,Efib);			// compute fext
+		model_externalForces(&m,Pfib,Efib);		// compute fext
 		model_configureConjugateGradient(&m);	// compute A=M-dt^2*K', b=M*v-dt*(K'*p-f0+fext)
 		model_conjugateGradient(&m,10);			// solve A*v=b for the vertex velocities v
 		model_updatePosition(&m);				// update vertex position based on velocities
