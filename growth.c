@@ -956,22 +956,24 @@ void foldLength(void)//chenlu
 	printf("%g\n",length/2.0);
 }
 
+void printHelp(void)
+{
+	printf("\
+ Make a model from a mesh, initialise it,\n\
+ simulate it, save the result, free it.\n\
+\n\
+     -i    mesh that gives the shape of the model surface\n\
+     -o    mesh where the deformed mesh will be saved\n\
+     -E    Young modulus (default 400k)\n\
+     -nu   Poisson ratio (default 0.33)\n\
+     -rho  Density of the material (mass/volume) (default 1000)\n\
+     -thickness  Thickness of the cortical layer (default 0.4)\n\
+     -plasticity  Plasticity of the cortical layer\n\
+ arg[8] surfaces to save: 1=external surface (default), 2=internal surface, 3=both (default)\n\
+");
+}
 #pragma mark -
 int main(int argc, char *argv[])
-/*
- Make a model from a mesh, initialise it,
- simulate it, save the result, free it
- 
- arg[1] is the mesh that gives the shape of the model surface
- arg[2] is the files where the deformed mesh will be saved
- arg[3]	E: Young modulus
- arg[4]	nu: Poisson ratio
- arg[5]	rho: density of the material (mass/volume)
- arg[6]	thickness of the cortical layer
- arg[7]	number of iterations
- arg[8] surfaces to save: 1=external surface (default), 2=internal surface, 3=both (default)
- 
- */
 {
 	Model	m;
 	int		i,j;
@@ -990,9 +992,6 @@ int main(int argc, char *argv[])
 	char	str[1024];
 	double	r;
 	double	initialVolume,actualVolume,targetVolume;
-	
-	
-	printf("#arguments=%i\n",argc);
 	
 	// read arguments
 	i=1;
