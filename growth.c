@@ -955,44 +955,51 @@ void foldLength(void)//chenlu
 	}
 	printf("%g\n",length/2.0);
 }
-
+void help(void)
+{
+	printf("\
+ Make a model from a mesh, initialise it,\n\
+ simulate it, save the result, free it\n\
+ \n\
+ -i             Mesh that gives the shape of the model surface\n\
+ -o             File where the deformed mesh will be saved\n\
+ -Ectx          Young modulus [default: 400000]\n\
+ -Pctx          Plasticity constant of the cortical layer [default: 0.006125]\n\
+ -Efib          Elasticity of the radial fibres [default: 1400]\n\
+ -Pfib          Plasticity of the radial fibres [default: 0.00001]\n\
+ -nu            Poisson ratio [default: 0.33]\n\
+ -rho           Density of the material (mass/volume) [default: 1000]\n\
+ -thickness     Thickness of the cortical layer [default: 0.4]\n\
+ -growth		Target volume as a fraction of the initial volume [default: 2.5]\n\
+ -Tgrowth       Time constant of the cortical layer growth [default: 0.1]\n\
+ -niter         Number of iterations [default: 100]\n\
+ -surf          Surfaces to save: 1=external surface, 2=internal surface, 3=both [default: 1]\n\
+ -step          Save the mesh every 'step' iterations [default: 0]\n\
+ -h             help\n\
+ ");
+ 	exit(0);
+}
 #pragma mark -
 int main(int argc, char *argv[])
-/*
- Make a model from a mesh, initialise it,
- simulate it, save the result, free it
- 
- arg[1] is the mesh that gives the shape of the model surface
- arg[2] is the files where the deformed mesh will be saved
- arg[3]	E: Young modulus
- arg[4]	nu: Poisson ratio
- arg[5]	rho: density of the material (mass/volume)
- arg[6]	thickness of the cortical layer
- arg[7]	number of iterations
- arg[8] surfaces to save: 1=external surface (default), 2=internal surface, 3=both (default)
- 
- */
 {
 	Model	m;
 	int		i,j;
 	char	*input,*output;
 	int		niter=100;
-	float	E=400000;
+	float	thickness=0.1;
+	float	growth=2.5;
+	float	Tgrowth=0.5;
+	float	Ectx=400000;
+	float	Pctx=0.006125;
+	float	Efib=1500;
+	float	Pfib=0.025;
 	float	nu=0.33;
 	float	rho=1000;
-	float	thickness=0.4;
 	int		surf=1;
 	int		step=0;
-	float	tgrowth=0.1;
-	float	plasticityf=0.00001;
-	float	Efib=1400;
-	float	plasticity=0.006125;
 	char	str[1024];
 	double	r;
 	double	initialVolume,actualVolume,targetVolume;
-	
-	
-	printf("#arguments=%i\n",argc);
 	
 	// read arguments
 	i=1;
@@ -1005,7 +1012,7 @@ int main(int argc, char *argv[])
 			output=argv[++i];
 		else
 		if(strcmp(argv[i],"-E")==0)
-			E=atof(argv[++i]);
+			Ectx=atof(argv[++i]);
 		else
 		if(strcmp(argv[i],"-nu")==0)
 			nu=atof(argv[++i]);
@@ -1017,16 +1024,16 @@ int main(int argc, char *argv[])
 			thickness=atof(argv[++i]);
 		else
 		if(strcmp(argv[i],"-plasticity")==0)
-			plasticity=atof(argv[++i]);
+			Pctx=atof(argv[++i]);
 		else
 		if(strcmp(argv[i],"-plasticityf")==0)
-			plasticityf=atof(argv[++i]);
+			Pfib=atof(argv[++i]);
 		else
 		if(strcmp(argv[i],"-Efib")==0)
 			Efib=atof(argv[++i]);
 		else
 		if(strcmp(argv[i],"-tgrowth")==0)
-			tgrowth=atof(argv[++i]);
+			Tgrowth=atof(argv[++i]);
 		else
 		if(strcmp(argv[i],"-niter")==0)
 			niter=atof(argv[++i]);
@@ -1036,12 +1043,17 @@ int main(int argc, char *argv[])
 		else
 		if(strcmp(argv[i],"-step")==0)
 			step=atoi(argv[++i]);
+		else
+		if(strcmp(argv[i],"-h")==0)
+			help();
+		else
+			printf("WARNING: Unknown argument %s\n",argv[i]);
 		i++;
 	}
 	
 	// load mesh
 	printf("load mesh\n");
-	model_newFromMeshFile(&m,input,E,nu,rho,thickness);
+	model_newFromMeshFile(&m,input,Ectx,nu,rho,thickness);
 	//model_newFromMeshFile(&m,argv[1],400000,0.33,1000,0.1);
 	//model_newFromMeshFile(&m,argv[1],4000000,0.33,1000,0.05);
 	
@@ -1063,7 +1075,7 @@ int main(int argc, char *argv[])
 									  sub3D(m.p0[m.t[j].p[2]],m.p0[m.t[j].p[0]]),
 									  sub3D(m.p0[m.t[j].p[3]],m.p0[m.t[j].p[0]])))/6.0;
 	printf("Initial volume: %lf\n", initialVolume);
-	targetVolume=4*initialVolume;
+	targetVolume=growth*initialVolume;
 	printf("Target volume: %lf\n", targetVolume);
 	
 	
@@ -1084,21 +1096,21 @@ int main(int argc, char *argv[])
 		}
 		
 		
-		r=pow(tgrowth*(actualVolume/initialVolume-0.99)*pow(1-actualVolume/targetVolume,2)+1,1/3.0);
+		r=pow(Tgrowth*(actualVolume/initialVolume-0.99)*pow(1-actualVolume/targetVolume,3)+1,1/3.0);
 		printf("%lf %lf ",actualVolume,r);
 		for(j=0;j<m.np;j++)
 			m.p0[j]=sca3D(m.p0[j],r);
 		
 		model_rotation(&m);						// compute R
 		model_assemble(&m);						// compute f0=R*K, K'=R*K*R'
-		model_externalForces(&m,plasticityf,Efib);			// compute fext
+		model_externalForces(&m,Pfib,Efib);			// compute fext
 		model_configureConjugateGradient(&m);	// compute A=M-dt^2*K', b=M*v-dt*(K'*p-f0+fext)
 		model_conjugateGradient(&m,10);			// solve A*v=b for the vertex velocities v
 		model_updatePosition(&m);				// update vertex position based on velocities
 		
 		// cortical layer plasticity
 		for(j=0;j<m.np;j++)
-			m.p0[j]=add3D(m.p0[j],sca3D(sub3D(m.p[j],m.p0[j]),plasticity));
+			m.p0[j]=add3D(m.p0[j],sca3D(sub3D(m.p[j],m.p0[j]),Pctx));
 		
 		// TEST: make rest configuration equals to the actual
 		//for(j=0;j<m.np;j++) m.p0[j]=m.p[j];
