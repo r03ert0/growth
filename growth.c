@@ -17,9 +17,6 @@ typedef struct
 	int	a,b,c;
 }int3D;
 
-
-
-
 typedef struct
 {
 	int	a,b,c,d;
@@ -557,7 +554,7 @@ void model_assemble(Model *m)
 			}
 	}
 }	
-void model_externalForces(Model *m, double plasticityf, double Efib)
+void model_externalForces(Model *m, double Pfib, double EfibA)
 /*
  Compute external forces. Here, the action of radial fibres
  */
@@ -566,11 +563,11 @@ void model_externalForces(Model *m, double plasticityf, double Efib)
 	
 	// fibre elasticity
 	for(i=1;i<m->np;i+=2)
-		m->fext[i]=sca3D(m->p[i],Efib*(m->fibre_length[i]/nor3D(m->p[i])-1));
+		m->fext[i]=sca3D(m->p[i],EfibA*(1/nor3D(m->p[i])-1/m->fibre_length[i]));
 	
 	// fibre plasticity
 	for(i=1;i<m->np;i+=2)
-		m->fibre_length[i]+=plasticityf*(nor3D(m->p[i])-m->fibre_length[i]);
+		m->fibre_length[i]+=Pfib*(nor3D(m->p[i])-m->fibre_length[i]);
 }
 void  model_configureConjugateGradient(Model *m)
 /*
@@ -719,6 +716,7 @@ int model_vertexInTetra(Model *m, int vertexIndex, int tetraIndex, double3D *pen
 	x=sub3D(m->p[vertexIndex],m->p[m->t[tetraIndex].p[0]]);
 	
 	coords=invmxp(trnMat(vecs2mat(a, b, c)),x);
+	*penetration=coords;
 	if(coords.x>=0 && coords.y>=0 && coords.z>=0 &&
 	   coords.x+coords.y+coords.z<=1 )
 		return 1;
@@ -731,7 +729,7 @@ int model_collision(Model *m,int iter)
 {
 	int				i,j,k,x,y,z;
 	unsigned int	hash;
-	double3D		min,max,penetration;
+	double3D		min,max,penetration,tmp;
 	Tetra			*t;
 	HashCell		*h;
 	int				isInTetrahedron;
@@ -788,7 +786,19 @@ int model_collision(Model *m,int iter)
 							{
 								// 3rd pass: check if vertex is inside tetrahedron
 								if(model_vertexInTetra(m,h->i,i,&penetration))
+								{
+									printf("Collision detected. Vertex:%i, tetrahedron %i, penetration: %f, %f, %f\n",h->i,i,penetration.x,penetration.y,penetration.z);
+									tmp=m->p[h->i];
+									printf("vertex: %f, %f, %f\n",tmp.x,tmp.y,tmp.z);
+									printf("tetrahedron vertices:\n");
+									for(k=0;k<4;k++)
+									{
+										tmp=m->p[m->t[i].p[k]];
+										printf("%i: %f, %f, %f\n",m->t[i].p[k],tmp.x,tmp.y,tmp.z);
+									}
+									
 									return 1;
+								}
 							}
 						}
 						if(h->next)
@@ -1000,6 +1010,7 @@ int main(int argc, char *argv[])
 	char	str[1024];
 	double	r;
 	double	initialVolume,actualVolume,targetVolume;
+	double	initialSurface;
 	
 	// read arguments
 	i=1;
@@ -1011,7 +1022,7 @@ int main(int argc, char *argv[])
 		if(strcmp(argv[i],"-o")==0)
 			output=argv[++i];
 		else
-		if(strcmp(argv[i],"-E")==0)
+		if(strcmp(argv[i],"-Ectx")==0)
 			Ectx=atof(argv[++i]);
 		else
 		if(strcmp(argv[i],"-nu")==0)
@@ -1023,16 +1034,16 @@ int main(int argc, char *argv[])
 		if(strcmp(argv[i],"-thickness")==0)
 			thickness=atof(argv[++i]);
 		else
-		if(strcmp(argv[i],"-plasticity")==0)
+		if(strcmp(argv[i],"-Pctx")==0)
 			Pctx=atof(argv[++i]);
 		else
-		if(strcmp(argv[i],"-plasticityf")==0)
+		if(strcmp(argv[i],"-Pfib")==0)
 			Pfib=atof(argv[++i]);
 		else
 		if(strcmp(argv[i],"-Efib")==0)
 			Efib=atof(argv[++i]);
 		else
-		if(strcmp(argv[i],"-tgrowth")==0)
+		if(strcmp(argv[i],"-Tgrowth")==0)
 			Tgrowth=atof(argv[++i]);
 		else
 		if(strcmp(argv[i],"-niter")==0)
@@ -1054,9 +1065,6 @@ int main(int argc, char *argv[])
 	// load mesh
 	printf("load mesh\n");
 	model_newFromMeshFile(&m,input,Ectx,nu,rho,thickness);
-	//model_newFromMeshFile(&m,argv[1],400000,0.33,1000,0.1);
-	//model_newFromMeshFile(&m,argv[1],4000000,0.33,1000,0.05);
-	
 	
 	// init element stiffness matrices
 	printf("init stiffness matrices\n");
@@ -1067,14 +1075,19 @@ int main(int argc, char *argv[])
 	printf("init model topology\n");
 	model_topology(&m);
 	
-	
-	// growth
+	// initial volume and surface
 	initialVolume=0;
 	for(j=0;j<m.nt;j++)
 		initialVolume+=detMat(vecs2mat(sub3D(m.p0[m.t[j].p[1]],m.p0[m.t[j].p[0]]),
 									  sub3D(m.p0[m.t[j].p[2]],m.p0[m.t[j].p[0]]),
 									  sub3D(m.p0[m.t[j].p[3]],m.p0[m.t[j].p[0]])))/6.0;
 	printf("Initial volume: %lf\n", initialVolume);
+	initialSurface=0;
+	for(j=0;j<m.nt/3;j++)
+		initialSurface+=triangleArea(&m,m.t[3*j+2].p[0],m.t[3*j+2].p[2],m.t[3*j+2].p[1]);
+	printf("Initial surface: %lf\n", initialSurface);
+
+	// target volume
 	targetVolume=growth*initialVolume;
 	printf("Target volume: %lf\n", targetVolume);
 	
@@ -1101,12 +1114,12 @@ int main(int argc, char *argv[])
 		for(j=0;j<m.np;j++)
 			m.p0[j]=sca3D(m.p0[j],r);
 		
-		model_rotation(&m);						// compute R
-		model_assemble(&m);						// compute f0=R*K, K'=R*K*R'
-		model_externalForces(&m,Pfib,Efib);		// compute fext
-		model_configureConjugateGradient(&m);	// compute A=M-dt^2*K', b=M*v-dt*(K'*p-f0+fext)
-		model_conjugateGradient(&m,10);			// solve A*v=b for the vertex velocities v
-		model_updatePosition(&m);				// update vertex position based on velocities
+		model_rotation(&m);											// compute R
+		model_assemble(&m);											// compute f0=R*K, K'=R*K*R'
+		model_externalForces(&m,Pfib,Efib*initialSurface/m.np);		// compute fext
+		model_configureConjugateGradient(&m);						// compute A=M-dt^2*K', b=M*v-dt*(K'*p-f0+fext)
+		model_conjugateGradient(&m,10);								// solve A*v=b for the vertex velocities v
+		model_updatePosition(&m);									// update vertex position based on velocities
 		
 		// cortical layer plasticity
 		for(j=0;j<m.np;j++)
