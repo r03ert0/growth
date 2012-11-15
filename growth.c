@@ -235,6 +235,21 @@ matrix vecs2mat(double3D a, double3D b, double3D c)
 		a.y,b.y,c.y,
 		a.z,b.z,c.z };
 }
+double triangleArea(Model *m, int i0, int i1, int i2)
+{
+	double3D	p0,p1,p2;
+	double		a,b,c,s,area;
+	
+	p0=m->p[i0];
+	p1=m->p[i1];
+	p2=m->p[i2];
+	a=nor3D(sub3D(p0,p1));
+	b=nor3D(sub3D(p2,p1));
+	c=nor3D(sub3D(p0,p2));
+	s=(a+b+c)/2.0;
+	area=sqrt(s*(s-a)*(s-b)*(s-c));
+	return area;
+}
 #pragma mark -
 #pragma mark [ model: initialise ]
 void model_setTetra(Model *m,int tetraIndex,int a,int b,int c,int d,double E,double nu,double rho)
