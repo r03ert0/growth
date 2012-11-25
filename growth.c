@@ -77,6 +77,15 @@ typedef struct
 	double	dt;
 }Model;
 
+// Global variables
+double3D	*p;
+int3D	    *t;
+int	        np; //number of vertices
+int	        nt; //number of triangles
+double      *data;
+
+int verbose;
+
 #pragma mark -
 #pragma mark [ linear algebra ]
 double3D add3D(double3D a, double3D b)
@@ -130,6 +139,20 @@ matrix scaMat(matrix a, double t)
 double detMat(matrix a)
 {
 	return a.b*a.f*a.g + a.c*a.d*a.h + a.a*a.e*a.i - a.c*a.e*a.g - a.a*a.f*a.h - a.b*a.d*a.i;
+}
+double determinant(double3D x, double3D y, double3D z)
+{
+    matrix  a;
+    a.a=x.x;
+    a.b=x.y;
+    a.c=x.z;
+    a.d=y.x;
+    a.e=y.y;
+    a.f=y.z;
+    a.g=z.x;
+    a.h=z.y;
+    a.i=z.z;
+    return detMat(a);
 }
 matrix rkrtMat(matrix R, matrix K)
 {
@@ -288,16 +311,21 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
 	int3D		*tris;
 	char		str[256];
 	float		avrgEdgeLength=0;
-	
+    double3D     N;                     // normal vector, used for surface orientation test
+	float       orientation;            // result of the surface orientation test
 	// open surface file
 	f=fopen(path,"r");
 	fscanf(f," %i %i ", &nverts, &ntris);
+	if(verbose)
+	{
+    	printf("VAR: Nverts %i\n",nverts);
+	    printf("VAR: Ntriangles %i\n",ntris);
+	}
 	verts=(double3D*)calloc(nverts,sizeof(double3D));
 	tris=(int3D*)calloc(ntris,sizeof(int3D));
 	for(i=0;i<nverts;i++)
 	{
 		fgets(str,256,f);
-		//printf("TEST: %i. %s",i,str);
 		sscanf(str," %lf %lf %lf ",&(verts[i].x),&(verts[i].y),&(verts[i].z));
 	}
 	for(i=0;i<ntris;i++)
@@ -306,6 +334,19 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
 		sscanf(str," %i %i %i ",&tris[i].a,&tris[i].b,&tris[i].c);
 	}
 	fclose(f);
+	
+	// surface orientation test.
+	// I verify whether the vector going from the origin to the
+	// 1st vertex in the 1st triangle of the surface has the
+	// same orientation as the normal vector of that triangle
+    N=cro3D(sub3D(verts[tris[0].b],verts[tris[0].a]),sub3D(verts[tris[0].c],verts[tris[0].a]));
+    N=sca3D(N,1/nor3D(N));
+    orientation=dot3D(verts[tris[0].a],N);
+    if(orientation<0)
+    {
+        printf("ERROR: surface is mis-oriented (%g)\n",orientation);
+        return;
+    }
 	
 	// compute average edge length
 	avrgEdgeLength=0;
@@ -317,9 +358,7 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
 	}
 	avrgEdgeLength/=3.0*ntris;	
 	
-	// tmp for(i=0;i<nverts;i++) verts[i]=sca3D(verts[i],5);
-
-	
+	// find bounding box
 	float max[3]={0,0,0},min[3]={0,0,0};
 	for(i=0;i<nverts;i++)
 	{
@@ -330,7 +369,6 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
 		if(verts[i].z>max[2]) max[2]=verts[i].z;
 		if(verts[i].z<min[2]) min[2]=verts[i].z;
 	}
-	printf("x: %f,%f\ny: %f,%f\nz: %f,%f\n",min[0],max[0],min[1],max[1],min[2],max[2]);
 	
 	// compute surface normal
 	n=(double3D*)calloc(nverts,sizeof(double3D));
@@ -493,8 +531,11 @@ void model_topology(Model *m)
 		min=(m->ngb[i].n<min)?m->ngb[i].n:min;
 		max=(m->ngb[i].n>max)?m->ngb[i].n:max;
 	}
-	printf(" min #ngb: %i\n",min);
-	printf(" max #ngb: %i\n",max);
+	if(verbose)
+    {
+    	printf("VAR: Min_incident_tris %i\n",min);
+	    printf("VAR: Max_incident_tris %i\n",max);
+	}
 }
 #pragma mark -
 #pragma mark [ model: simulate ]
@@ -569,7 +610,7 @@ void model_assemble(Model *m)
 			}
 	}
 }	
-void model_externalForces(Model *m, double Pfib, double EfibA)
+void model_externalForces(Model *m, double Tfib, double EfibA)
 /*
  Compute external forces. Here, the action of radial fibres
  */
@@ -578,11 +619,12 @@ void model_externalForces(Model *m, double Pfib, double EfibA)
 	
 	// fibre elasticity
 	for(i=1;i<m->np;i+=2)
-		m->fext[i]=sca3D(m->p[i],EfibA*(1/nor3D(m->p[i])-1/m->fibre_length[i]));
+		//m->fext[i]=sca3D(m->p[i],EfibA*(1/nor3D(m->p[i])-1/m->fibre_length[i]));
+		m->fext[i]=sca3D(m->p[i],EfibA*(m->fibre_length[i]/nor3D(m->p[i])-1));
 	
 	// fibre plasticity
 	for(i=1;i<m->np;i+=2)
-		m->fibre_length[i]+=Pfib*(nor3D(m->p[i])-m->fibre_length[i]);
+		m->fibre_length[i]+=(nor3D(m->p[i])-m->fibre_length[i])/Tfib;
 }
 void  model_configureConjugateGradient(Model *m)
 /*
@@ -688,7 +730,7 @@ void model_conjugateGradient(Model *m, int maxiter)
 		for(i=0;i<m->np;i++)
 			m->P[i]=add3D(m->R[i],sca3D(m->P[i],beta));
 	}
-	printf("%i %lf ",k,rnew);
+	//printf("%i %lf ",k,rnew);	// k=number_iterations, r=residual_error
 }
 void model_updatePosition(Model *m)
 /*
@@ -744,7 +786,7 @@ int model_collision(Model *m,int iter)
 {
 	int				i,j,k,x,y,z;
 	unsigned int	hash;
-	double3D		min,max,penetration,tmp;
+	double3D		min,max,penetration;
 	Tetra			*t;
 	HashCell		*h;
 	int				isInTetrahedron;
@@ -802,16 +844,10 @@ int model_collision(Model *m,int iter)
 								// 3rd pass: check if vertex is inside tetrahedron
 								if(model_vertexInTetra(m,h->i,i,&penetration))
 								{
-									printf("Collision detected. Vertex:%i, tetrahedron %i, penetration: %f, %f, %f\n",h->i,i,penetration.x,penetration.y,penetration.z);
-									tmp=m->p[h->i];
-									printf("vertex: %f, %f, %f\n",tmp.x,tmp.y,tmp.z);
-									printf("tetrahedron vertices:\n");
-									for(k=0;k<4;k++)
-									{
-										tmp=m->p[m->t[i].p[k]];
-										printf("%i: %f, %f, %f\n",m->t[i].p[k],tmp.x,tmp.y,tmp.z);
-									}
-									
+									printf("MSG: \"Collision detected\"\n");
+									printf("Vertex_index %i\n",h->i);
+									printf("Tetrahedron_index %i\n",i);
+									printf("Penetration %f,%f,%f\n",penetration.x,penetration.y,penetration.z);									
 									return 1;
 								}
 							}
@@ -837,29 +873,32 @@ void model_save(Model *m, char *path, int surf)
 	
 	if(surf==1)
 	{
-		printf("Saving external surface\n");
+		if(verbose)
+    		printf("MSG: \"Saving internal surface\"\n");
 		fprintf(f,"%i %i\n",m->np/2,m->nt/3);
 		for(i=0;i<m->np/2;i++) fprintf(f,"%g %g %g\n",m->p[2*i].x,m->p[2*i].y,m->p[2*i].z);
 		for(i=0;i<m->nt/3;i++) fprintf(f,"%i %i %i\n",m->t[3*i].p[1]/2,m->t[3*i].p[0]/2,m->t[3*i].p[2]/2);
 	}
 	else
-		if(surf==2)
-		{
-			printf("Saving internal surface\n");
-			fprintf(f,"%i %i\n",m->np/2,m->nt/3);
-			for(i=0;i<m->np/2;i++) fprintf(f,"%g %g %g\n",m->p[2*i+1].x,m->p[2*i+1].y,m->p[2*i+1].z);
-			for(i=0;i<m->nt/3;i++) fprintf(f,"%i %i %i\n",m->t[3*i].p[1]/2,m->t[3*i].p[0]/2,m->t[3*i].p[2]/2);
-		}
-		else
-			if(surf==3)
-			{
-				printf("Saving external and internal surfaces\n");
-				fprintf(f,"%i %i\n",m->np,2*m->nt/3);
-				for(i=0;i<m->np/2;i++) fprintf(f,"%g %g %g\n",m->p[2*i].x,m->p[2*i].y,m->p[2*i].z);
-				for(i=0;i<m->np/2;i++) fprintf(f,"%g %g %g\n",m->p[2*i+1].x,m->p[2*i+1].y,m->p[2*i+1].z);
-				for(i=0;i<m->nt/3;i++) fprintf(f,"%i %i %i\n",m->t[3*i].p[1]/2,m->t[3*i].p[0]/2,m->t[3*i].p[2]/2);
-				for(i=0;i<m->nt/3;i++) fprintf(f,"%i %i %i\n",m->t[3*i].p[1]/2+m->np/2,m->t[3*i].p[0]/2+m->np/2,m->t[3*i].p[2]/2+m->np/2);
-			}
+	if(surf==2)
+	{
+		if(verbose)
+    		printf("MSG: \"Saving external surface\"\n");
+		fprintf(f,"%i %i\n",m->np/2,m->nt/3);
+		for(i=0;i<m->np/2;i++) fprintf(f,"%g %g %g\n",m->p[2*i+1].x,m->p[2*i+1].y,m->p[2*i+1].z);
+		for(i=0;i<m->nt/3;i++) fprintf(f,"%i %i %i\n",m->t[3*i].p[1]/2,m->t[3*i].p[0]/2,m->t[3*i].p[2]/2);
+	}
+	else
+	if(surf==3)
+	{
+		if(verbose)
+    		printf("MSG: \"Saving internal and external surfaces\"\n");
+		fprintf(f,"%i %i\n",m->np,2*m->nt/3);
+		for(i=0;i<m->np/2;i++) fprintf(f,"%g %g %g\n",m->p[2*i].x,m->p[2*i].y,m->p[2*i].z);
+		for(i=0;i<m->np/2;i++) fprintf(f,"%g %g %g\n",m->p[2*i+1].x,m->p[2*i+1].y,m->p[2*i+1].z);
+		for(i=0;i<m->nt/3;i++) fprintf(f,"%i %i %i\n",m->t[3*i].p[1]/2,m->t[3*i].p[0]/2,m->t[3*i].p[2]/2);
+		for(i=0;i<m->nt/3;i++) fprintf(f,"%i %i %i\n",m->t[3*i].p[1]/2+m->np/2,m->t[3*i].p[0]/2+m->np/2,m->t[3*i].p[2]/2+m->np/2);
+	}
 	fclose(f);
 }	
 void model_free(Model *m)
@@ -882,12 +921,6 @@ void model_free(Model *m)
 	free(m->t);
 	
 }
-double3D	*p;
-int3D	*t;
-int	np; //number of vertices
-int	nt; //number of triangles
-double *data;
-
 int curvature(Model *m, double	*C)//chenlu
 {
     double3D		*tmp,*tmp1;
@@ -948,7 +981,7 @@ int curvature(Model *m, double	*C)//chenlu
     
     return 0;
 }
-void foldLength(void)//chenlu
+double foldLength(void)//chenlu
 {
 	int		i,j;
 	double	length=0,a,x;
@@ -978,7 +1011,7 @@ void foldLength(void)//chenlu
 		if(j==2)
 			length+=nor3D(sub3D(p0[0],p0[1]));
 	}
-	printf("%g\n",length/2.0);
+	return length/2.0;
 }
 void printHelp(void)
 {
@@ -987,47 +1020,67 @@ Make a model from a mesh, initialise it,\n\
 simulate it, save the result, free it\n\
 \n\
  -i             Mesh that gives the shape of the model surface\n\
- -o             File where the deformed mesh will be saved\n\
- -Ectx          Young modulus [default: 400000]\n\
- -Pctx          Plasticity constant of the cortical layer [default: 0.00 6125]\n\
- -Efib          Elasticity of the radial fibres [default: 1400]\n\
- -Pfib          Plasticity of the radial fibres [default: 0.00001]\n\
+ -o             File to save the final mesh\n\
+ -Ectx          Young modulus [default: 400000 Pa]\n\
+ -Tctx          Plasticity constant of the cortical layer [default: 1500]\n\
+ -Efib          Elasticity of the radial fibres [default: 4500]\n\
+ -Tfib          Plasticity of the radial fibres [default: 10000]\n\
  -nu            Poisson ratio [default: 0.33]\n\
  -rho           Density of the material (mass/volume) [default: 1000]\n\
  -thickness     Thickness of the cortical layer [default: 0.4]\n\
- -growth        Target volume as a fraction of the initial volume [default: 2.5]\n\
- -Tgrowth       Time constant of the cortical layer growth [default: 0.1]\n\
+ -growth        Target surface as a fraction of the initial surface [default: 1.5]\n\
+ -Tgrowth       Time constant of the cortical layer growth [default: 100]\n\
  -niter         Number of iterations [default: 100]\n\
- -surf          Surfaces to save: 1=external surface, 2=internal surface, 3=both [default: 1]\n\
+ -surf          Surfaces to save: 1=internal surface, 2=external surface, 3=both [default: 2]\n\
  -step          Save the mesh every 'step' iterations [default: 0]\n\
  -h             help\n\
+ -v             verbose\n\
  ");
  	exit(0);
+}
+void printParams(float Efib, float Tfib, float Ectx, float Tctx, float nu, float rho, float thickness, float growth, float Tgrowth, int niter)
+{
+	printf("VAR: Efib %g\n",Efib);
+	printf("VAR: Tfib %g\n",Tfib);
+	printf("VAR: Ectx %g\n",Ectx);
+	printf("VAR: Tctx %g\n",Tctx);
+	printf("VAR: nu %g\n",nu);
+	printf("VAR: rho %g\n",rho);
+	printf("VAR: thickness %g\n",thickness);
+	printf("VAR: growth %g\n",growth);
+	printf("VAR: Tgrowth %g\n",Tgrowth);
+	printf("VAR: niter %i\n",niter);
 }
 #pragma mark -
 int main(int argc, char *argv[])
 {
 	Model	m;
 	int		i,j;
-	char	*input,*output;
+	char	*input,*output=NULL;
 	int		niter=100;
-	float	thickness=0.1;
-	float	growth=2.5;
-	float	Tgrowth=0.5;
+	float	Efib=4000;
+	float	Tfib=1000;
 	float	Ectx=400000;
-	float	Pctx=0.0006125;
-	float	Efib=1500;
-	float	Pfib=0.025;
-	float	nu=0.33;
+	float	Tctx=1000;
+	float	nu=0.4;
 	float	rho=1000;
-	int		surf=1;
+	float	thickness=0.2;
+	float	growth=1.5;
+	float	Tgrowth=100;
+	int		surf=2;
 	int		step=0;
 	char	str[1024];
 	double	r;
-	double	initialVolume,actualVolume,targetVolume;
-	double	initialSurface;
+	double	volume;
+	double	surface,initialSurface,targetSurface;
+	double  flength;
 	
-	// read arguments
+	verbose=0;
+	
+//=======================================================================================
+// 1. Read arguments
+//=======================================================================================
+
 	i=1;
 	while(i<argc)
 	{
@@ -1049,14 +1102,17 @@ int main(int argc, char *argv[])
 		if(strcmp(argv[i],"-thickness")==0)
 			thickness=atof(argv[++i]);
 		else
-		if(strcmp(argv[i],"-Pctx")==0)
-			Pctx=atof(argv[++i]);
+		if(strcmp(argv[i],"-Tctx")==0)
+			Tctx=atof(argv[++i]);
 		else
-		if(strcmp(argv[i],"-Pfib")==0)
-			Pfib=atof(argv[++i]);
+		if(strcmp(argv[i],"-Tfib")==0)
+			Tfib=atof(argv[++i]);
 		else
 		if(strcmp(argv[i],"-Efib")==0)
 			Efib=atof(argv[++i]);
+		else
+		if(strcmp(argv[i],"-growth")==0)
+			growth=atof(argv[++i]);
 		else
 		if(strcmp(argv[i],"-Tgrowth")==0)
 			Tgrowth=atof(argv[++i]);
@@ -1073,72 +1129,88 @@ int main(int argc, char *argv[])
 		if(strcmp(argv[i],"-h")==0)
 			printHelp();
 		else
+		if(strcmp(argv[i],"-v")==0)
+			verbose=1;
+		else
 			printf("WARNING: Unknown argument %s\n",argv[i]);
 		i++;
 	}
+	printParams(Efib,Tfib,Ectx,Tctx,nu,rho,thickness,growth,Tgrowth,niter);	
 	
+//=======================================================================================
+// 2. Configure simulation
+//=======================================================================================
+
 	// load mesh
-	printf("load mesh\n");
 	model_newFromMeshFile(&m,input,Ectx,nu,rho,thickness);
 	
 	// init element stiffness matrices
-	printf("init stiffness matrices\n");
 	for(i=0;i<m.nt;i++)							// K
 		model_stiffness(&m, &(m.t[i]));
 	
 	// init mesh topology
-	printf("init model topology\n");
 	model_topology(&m);
 	
-	// initial volume and surface
-	initialVolume=0;
+	// allocate memory for curvature computation (used for folding length)
+	data=(double*)calloc(m.np/2,sizeof(double));
+
+	
+	// initial cortical volume
+	volume=0;
 	for(j=0;j<m.nt;j++)
-		initialVolume+=detMat(vecs2mat(sub3D(m.p0[m.t[j].p[1]],m.p0[m.t[j].p[0]]),
+		volume+=detMat(vecs2mat(sub3D(m.p0[m.t[j].p[1]],m.p0[m.t[j].p[0]]),
 									  sub3D(m.p0[m.t[j].p[2]],m.p0[m.t[j].p[0]]),
 									  sub3D(m.p0[m.t[j].p[3]],m.p0[m.t[j].p[0]])))/6.0;
-	printf("Initial volume: %lf\n", initialVolume);
+	printf("VAR: Initial_cortical_volume %lf\n", volume);
+	
+	// initial model volume
+	volume=0;
+	for(j=0;j<m.nt/3;j++)
+		volume+=determinant(m.p[m.t[3*j+0].p[1]],m.p[m.t[3*j+0].p[0]],m.p[m.t[3*j+0].p[3]])/6.0;
+	printf("VAR: Initial_model_volume %lf\n", volume);
+
+	// initial cortical surface
 	initialSurface=0;
 	for(j=0;j<m.nt/3;j++)
-		initialSurface+=triangleArea(&m,m.t[3*j+2].p[0],m.t[3*j+2].p[2],m.t[3*j+2].p[1]);
-	printf("Initial surface: %lf\n", initialSurface);
+		initialSurface+=triangleArea(&m,m.t[3*j+0].p[1],m.t[3*j+0].p[0],m.t[3*j+0].p[3]);
+	printf("VAR: Initial_surface %lf\n", initialSurface);
 
-	// target volume
-	targetVolume=growth*initialVolume;
-	printf("Target volume: %lf\n", targetVolume);
+	// target surface
+	targetSurface=growth*initialSurface;
+	printf("VAR: Target_surface %lf\n", targetSurface);
 	
-	
-	// simulation loop
-	printf("start simulation loop\n");
+//=======================================================================================
+// 3. Run simulation
+//=======================================================================================
+
+	printf("MSG: \"Start simulation loop\"\n");
+	printf("Surface ");
+	printf("Growth ");
+	printf("Fold_length ");
+	printf("\n");
 	m.dt=0.1;
 	for(i=0;i<niter;i++)
 	{
-		printf("%i ",i);
-		
 		// cortical layer growth
-		actualVolume=0;
-		for(j=0;j<m.nt;j++)
-		{
-			actualVolume+=detMat(vecs2mat(sub3D(m.p0[m.t[j].p[1]],m.p0[m.t[j].p[0]]),
-										 sub3D(m.p0[m.t[j].p[2]],m.p0[m.t[j].p[0]]),
-										 sub3D(m.p0[m.t[j].p[3]],m.p0[m.t[j].p[0]])))/6.0;
-		}
-		
-		
-		r=pow(Tgrowth*(actualVolume/initialVolume-0.99)*pow(1-actualVolume/targetVolume,3)+1,1/3.0);
-		printf("%lf %lf ",actualVolume,r);
+		surface=0;
+		for(j=0;j<m.nt/3;j++)
+			surface+=triangleArea(&m,m.t[3*j+0].p[1],m.t[3*j+0].p[0],m.t[3*j+0].p[3]);
+		//r=pow(Tgrowth*(surface/initialSurface-0.98)*pow(1-surface/targetSurface,3)+1,1/2.0);		
+		r=log(targetSurface/surface)/Tgrowth+1;
 		for(j=0;j<m.np;j++)
 			m.p0[j]=sca3D(m.p0[j],r);
 		
-		model_rotation(&m);											// compute R
-		model_assemble(&m);											// compute f0=R*K, K'=R*K*R'
-		model_externalForces(&m,Pfib,Efib*initialSurface/m.np);		// compute fext
-		model_configureConjugateGradient(&m);						// compute A=M-dt^2*K', b=M*v-dt*(K'*p-f0+fext)
-		model_conjugateGradient(&m,10);								// solve A*v=b for the vertex velocities v
-		model_updatePosition(&m);									// update vertex position based on velocities
+		// mechanics
+		model_rotation(&m);													// compute R
+		model_assemble(&m);													// compute f0=R*K, K'=R*K*R'
+		model_externalForces(&m,Tfib,Efib*initialSurface/(float)(m.np/2));	// compute fext
+		model_configureConjugateGradient(&m);								// compute A=M-dt^2*K', b=M*v-dt*(K'*p-f0+fext)
+		model_conjugateGradient(&m,10);										// solve A*v=b for the vertex velocities v
+		model_updatePosition(&m);											// update vertex position based on velocities
 		
 		// cortical layer plasticity
 		for(j=0;j<m.np;j++)
-			m.p0[j]=add3D(m.p0[j],sca3D(sub3D(m.p[j],m.p0[j]),Pctx));
+			m.p0[j]=add3D(m.p0[j],sca3D(sub3D(m.p[j],m.p0[j]),1/Tctx));
 		
 		// TEST: make rest configuration equals to the actual
 		//for(j=0;j<m.np;j++) m.p0[j]=m.p[j];
@@ -1152,35 +1224,58 @@ int main(int argc, char *argv[])
 			model_save(&m,str,surf);
 		}
 		
-		data=NULL;//chenlu
-		if(data==NULL)
-			data=(double*)calloc(m.np/2,sizeof(double));
+		// compute fold length
 		curvature(&m,data);
-		foldLength();
-		if(data)//chenlu
-			free(data);	
+		flength=foldLength();
 
+		// display measurements
+		printf("%lf ",surface);
+		printf("%lf ",r);
+		printf("%lf ",flength);
+        printf("\n");
+        
 		if(model_collision(&m,i+1))
 		{
-			printf("Collision detected.\n");
 			sprintf(str,"%s.%i.txt",output,i);
 			model_save(&m,str,surf);	
 			return 0;
 		}		
 	}
+	printf("MSG: \"Simulation loop end\"\n");
 
-	actualVolume=0;
+//=======================================================================================
+// 4. Save results
+//=======================================================================================
+
+	// final model volume
+	volume=0;
+	for(j=0;j<m.nt/3;j++)
+		volume+=determinant(m.p[m.t[3*j+0].p[1]],m.p[m.t[3*j+0].p[0]],m.p[m.t[3*j+0].p[3]])/6.0;
+	printf("VAR: Final_model_volume %lf\n", volume);
+
+	// final cortical volume
+	volume=0;
 	for(j=0;j<m.nt;j++)
-		actualVolume+=detMat(vecs2mat(sub3D(m.p0[m.t[j].p[1]],m.p0[m.t[j].p[0]]),
-									  sub3D(m.p0[m.t[j].p[2]],m.p0[m.t[j].p[0]]),
-									  sub3D(m.p0[m.t[j].p[3]],m.p0[m.t[j].p[0]])))/6.0;
-	printf("Final volume: %lf\n",actualVolume);
+		volume+=detMat(vecs2mat(sub3D(m.p0[m.t[j].p[1]],m.p0[m.t[j].p[0]]),
+								sub3D(m.p0[m.t[j].p[2]],m.p0[m.t[j].p[0]]),
+								sub3D(m.p0[m.t[j].p[3]],m.p0[m.t[j].p[0]])))/6.0;
+	printf("VAR: Final_cortical_volume %lf\n",volume);
 	
-	sprintf(str,"%s.%i.txt",output,i);
-	model_save(&m,str,surf);
+	// final cortical surface
+	surface=0;
+	for(j=0;j<m.nt/3;j++)
+		surface+=triangleArea(&m,m.t[3*j+0].p[1],m.t[3*j+0].p[0],m.t[3*j+0].p[3]);
+	printf("VAR: Final_cortical_surface %lf\n",surface);
+
+	if(output)
+	{
+		sprintf(str,"%s.%i.txt",output,i);
+		model_save(&m,str,surf);
+	}
 	
+	// free allocated memory
 	model_free(&m);
-	
+	free(data);	
 	
 	return 0;
 }
