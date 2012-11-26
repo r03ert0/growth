@@ -383,10 +383,7 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
         neighb[tris[i].c]++;
     }
     for(i=0;i<nverts;i++)
-    {
         n[i]=sca3D(n[i],1/(double)neighb[i]);
-        printf("%lf %lf %lf\n",n[i].x,n[i].y,n[i].z);
-    }
     free(neighb);
     
     // allocate memory
@@ -1164,6 +1161,7 @@ int main(int argc, char *argv[])
 
     // load mesh
     model_newFromMeshFile(&m,input,Ectx,nu,rho,thickness);
+    for(i=0;i<10;i++) printf("%lf %lf %lf\n",m.p[2*i].x,m.p[2*i].y,m.p[2*i].z); printf("\n");
     
     // init element stiffness matrices
     for(i=0;i<m.nt;i++)                            // K
