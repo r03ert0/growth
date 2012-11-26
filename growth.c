@@ -1216,8 +1216,6 @@ int main(int argc, char *argv[])
         r=log(targetSurface/surface)/Tgrowth+1;
         for(j=0;j<m.np;j++)
             m.p0[j]=sca3D(m.p0[j],r);
-        
-    	for(j=0;j<10;j++) printf("%lf %lf %lf\n",m.p[2*j].x,m.p[2*j].y,m.p[2*j].z); printf("\n");
 
         // mechanics
         model_rotation(&m);                                                 // compute R
@@ -1226,7 +1224,8 @@ int main(int argc, char *argv[])
         model_configureConjugateGradient(&m);                               // compute A=M-dt^2*K', b=M*v-dt*(K'*p-f0+fext)
         model_conjugateGradient(&m,10);                                     // solve A*v=b for the vertex velocities v
         model_updatePosition(&m);                                           // update vertex position based on velocities
-        
+       	for(j=0;j<10;j++) printf("%lf %lf %lf\n",m.p[2*j].x,m.p[2*j].y,m.p[2*j].z); printf("\n");
+
         // cortical layer plasticity
         for(j=0;j<m.np;j++)
             m.p0[j]=add3D(m.p0[j],sca3D(sub3D(m.p[j],m.p0[j]),1/Tctx));
