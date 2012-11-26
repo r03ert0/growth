@@ -1161,7 +1161,6 @@ int main(int argc, char *argv[])
 
     // load mesh
     model_newFromMeshFile(&m,input,Ectx,nu,rho,thickness);
-    for(i=0;i<10;i++) printf("%lf %lf %lf\n",m.p[2*i].x,m.p[2*i].y,m.p[2*i].z); printf("\n");
     
     // init element stiffness matrices
     for(i=0;i<m.nt;i++)                            // K
@@ -1201,6 +1200,7 @@ int main(int argc, char *argv[])
 // 3. Run simulation
 //=======================================================================================
 
+    for(i=0;i<10;i++) printf("%lf %lf %lf\n",m.p[2*i].x,m.p[2*i].y,m.p[2*i].z); printf("\n");
     printf("MSG: \"Start simulation loop\"\n");
     printf("Surface ");
     printf("Growth ");
