@@ -326,7 +326,6 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
     {
         fgets(str,256,f);
         sscanf(str," %lf %lf %lf ",&(verts[i].x),&(verts[i].y),&(verts[i].z));
-        printf("%lf %lf %lf\n",verts[i].x,verts[i].y,verts[i].z);
     }
     for(i=0;i<ntris;i++)
     {
@@ -384,7 +383,10 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
         neighb[tris[i].c]++;
     }
     for(i=0;i<nverts;i++)
+    {
         n[i]=sca3D(n[i],1/(double)neighb[i]);
+        printf("%lf %lf %lf\n",n[i].x,n[i].y,n[i].z);
+    }
     free(neighb);
     
     // allocate memory
