@@ -326,6 +326,7 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
     {
         fgets(str,256,f);
         sscanf(str," %lf %lf %lf ",&(verts[i].x),&(verts[i].y),&(verts[i].z));
+        printf("%lf %lf %lf\n",verts[i].x,verts[i].y,verts[i].z);
     }
     for(i=0;i<ntris;i++)
     {
@@ -955,7 +956,6 @@ int curvature(Model *m, double *C)//chenlu
     {
     	P=m->p[2*i];
         tmp[i]=sub3D(sca3D(tmp[i],1/(double)n[i]),P);
-        printf("%lf %lf %lf\n",P.x,P.y,P.x);
     }
     
     // compute normal direction as the average of neighbour triangle normals
