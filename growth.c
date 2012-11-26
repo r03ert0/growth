@@ -931,9 +931,7 @@ int curvature(Model *m, double *C)//chenlu
     double3D	P,Pa,Pb,Pc;
     int3D		T;
     int			NP,NT;
-    
-    double sum;
-    
+        
     NP=m->np/2;
     NT=m->nt/3;
 
@@ -953,12 +951,11 @@ int curvature(Model *m, double *C)//chenlu
         n[T.b]+=2;
         n[T.c]+=2;
     }
-    sum=0;
     for(i=0;i<NP;i++)
     {
     	P=m->p[2*i];
         tmp[i]=sub3D(sca3D(tmp[i],1/(double)n[i]),P);
-        sum+=P.x+P.y+P.z;
+        printf("%lf %lf %lf\n",P.x,P.y,P.x);
     }
     
     // compute normal direction as the average of neighbour triangle normals
@@ -989,7 +986,6 @@ int curvature(Model *m, double *C)//chenlu
     for(i=0;i<NP;i++)
         C[i]/=absmax;
 
-    printf("sum:%lf\n",sum);
     return 0;
 }
 double foldLength(Model *m, double *C)//chenlu
