@@ -1217,6 +1217,8 @@ int main(int argc, char *argv[])
         for(j=0;j<m.np;j++)
             m.p0[j]=sca3D(m.p0[j],r);
         
+    	for(j=0;j<10;j++) printf("%lf %lf %lf\n",m.p[2*j].x,m.p[2*j].y,m.p[2*j].z); printf("\n");
+
         // mechanics
         model_rotation(&m);                                                 // compute R
         model_assemble(&m);                                                 // compute f0=R*K, K'=R*K*R'
@@ -1257,7 +1259,6 @@ int main(int argc, char *argv[])
             model_save(&m,str,surf);    
             return 0;
         }        
-    	for(j=0;j<10;j++) printf("%lf %lf %lf\n",m.p[2*j].x,m.p[2*j].y,m.p[2*j].z); printf("\n");
     }
     printf("MSG: \"Simulation loop end\"\n");
 
