@@ -958,7 +958,7 @@ int curvature(Model *m, double *C)//chenlu
     {
     	P=m->p[2*i];
         tmp[i]=sub3D(sca3D(tmp[i],1/(double)n[i]),P);
-        sum+=tmp[i].x+tmp[i].y+tmp[i].z;
+        sum+=P.x+P.y+P.z;
     }
     
     // compute normal direction as the average of neighbour triangle normals
