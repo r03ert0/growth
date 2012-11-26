@@ -82,7 +82,7 @@ typedef struct
 //int3D       *t;
 //int         np; 	//number of vertices
 //int         nt;		//number of triangles
-double      *data;
+//double      *data;
 int			verbose;
 
 #pragma mark -
@@ -783,15 +783,15 @@ int model_collision(Model *m,int iter)
  Collision detection algorithm
  */
 {
-    int                i,j,k,x,y,z;
+    int             i,j,k,x,y,z;
     unsigned int    hash;
     double3D        min,max,penetration;
-    Tetra            *t;
+    Tetra           *t;
     HashCell        *h;
-    int                isInTetrahedron;
+    int             isInTetrahedron;
     
     // 1st pass: assign vertices to hash
-    for(i=0;i<m->np/2;i++)        // np/2 because only the vertices of the external surface are used
+    for(i=0;i<m->np/2;i++)      // np/2 because only the vertices of the external surface are used
     {
         hash=(((unsigned int)floor(m->p[2*i].x/m->h)*92837111)^((unsigned int)floor(m->p[2*i].y/m->h)*689287499)^((unsigned int)floor(m->p[2*i].z/m->h)*283923481))%m->nhash;
         model_addToHash(m,hash,2*i,iter);
@@ -864,9 +864,10 @@ int model_collision(Model *m,int iter)
 #pragma mark -
 #pragma mark [ util ]
 void model_save(Model *m, char *path, int surf)
+/*
+	save model cortical layer
+*/
 {
-    // save model cortical layer
-    
     FILE    *f=fopen(path,"w");
     int        i;
     
@@ -931,6 +932,8 @@ int curvature(Model *m, double *C)//chenlu
     int3D		T;
     int			NP,NT;
     
+    double sum;
+    
     NP=m->np/2;
     NT=m->nt/3;
 
@@ -950,10 +953,12 @@ int curvature(Model *m, double *C)//chenlu
         n[T.b]+=2;
         n[T.c]+=2;
     }
+    sum=0;
     for(i=0;i<NP;i++)
     {
     	P=m->p[2*i];
         tmp[i]=sub3D(sca3D(tmp[i],1/(double)n[i]),P);
+        sum+=tmp[i].x+tmp[i].y+tmp[i].z;
     }
     
     // compute normal direction as the average of neighbour triangle normals
@@ -983,7 +988,8 @@ int curvature(Model *m, double *C)//chenlu
         absmax=(fabs(C[i])>absmax)?fabs(C[i]):absmax;
     for(i=0;i<NP;i++)
         C[i]/=absmax;
-    
+
+    printf("sum:%lf\n",sum);
     return 0;
 }
 double foldLength(Model *m, double *C)//chenlu
@@ -1070,25 +1076,26 @@ void printParams(float Efib, float Tfib, float Ectx, float Tctx, float nu, float
 #pragma mark -
 int main(int argc, char *argv[])
 {
-    Model    m;
-    int        i,j;
+    Model   m;
+    int     i,j;
     char    *input,*output=NULL;
-    int        niter=100;
-    float    Efib=4000;
-    float    Tfib=1000;
-    float    Ectx=400000;
-    float    Tctx=1000;
-    float    nu=0.4;
-    float    rho=1000;
-    float    thickness=0.2;
-    float    growth=1.5;
-    float    Tgrowth=100;
-    int        surf=2;
-    int        step=0;
+    int     niter=100;
+    float   Efib=4000;
+    float   Tfib=1000;
+    float   Ectx=400000;
+    float   Tctx=1000;
+    float   nu=0.4;
+    float   rho=1000;
+    float   thickness=0.2;
+    float   growth=1.5;
+    float   Tgrowth=100;
+    int     surf=2;
+    int     step=0;
     char    str[1024];
-    double    r;
-    double    volume;
-    double    surface,initialSurface,targetSurface;
+    double  r;
+    double  volume;
+    double  surface,initialSurface,targetSurface;
+    double	*data;
     double  flength;
     
     verbose=0;
@@ -1169,14 +1176,13 @@ int main(int argc, char *argv[])
     
     // allocate memory for curvature computation (used for folding length)
     data=(double*)calloc(m.np/2,sizeof(double));
-
     
     // initial cortical volume
     volume=0;
     for(j=0;j<m.nt;j++)
         volume+=detMat(vecs2mat(sub3D(m.p0[m.t[j].p[1]],m.p0[m.t[j].p[0]]),
-                                      sub3D(m.p0[m.t[j].p[2]],m.p0[m.t[j].p[0]]),
-                                      sub3D(m.p0[m.t[j].p[3]],m.p0[m.t[j].p[0]])))/6.0;
+                                sub3D(m.p0[m.t[j].p[2]],m.p0[m.t[j].p[0]]),
+                                sub3D(m.p0[m.t[j].p[3]],m.p0[m.t[j].p[0]])))/6.0;
     printf("VAR: Initial_cortical_volume %lf\n", volume);
     
     // initial model volume
@@ -1217,12 +1223,12 @@ int main(int argc, char *argv[])
             m.p0[j]=sca3D(m.p0[j],r);
         
         // mechanics
-        model_rotation(&m);                                                    // compute R
-        model_assemble(&m);                                                    // compute f0=R*K, K'=R*K*R'
-        model_externalForces(&m,Tfib,Efib*initialSurface/(float)(m.np/2));    // compute fext
-        model_configureConjugateGradient(&m);                                // compute A=M-dt^2*K', b=M*v-dt*(K'*p-f0+fext)
-        model_conjugateGradient(&m,10);                                        // solve A*v=b for the vertex velocities v
-        model_updatePosition(&m);                                            // update vertex position based on velocities
+        model_rotation(&m);                                                 // compute R
+        model_assemble(&m);                                                 // compute f0=R*K, K'=R*K*R'
+        model_externalForces(&m,Tfib,Efib*initialSurface/(float)(m.np/2));  // compute fext
+        model_configureConjugateGradient(&m);                               // compute A=M-dt^2*K', b=M*v-dt*(K'*p-f0+fext)
+        model_conjugateGradient(&m,10);                                     // solve A*v=b for the vertex velocities v
+        model_updatePosition(&m);                                           // update vertex position based on velocities
         
         // cortical layer plasticity
         for(j=0;j<m.np;j++)
