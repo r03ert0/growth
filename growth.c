@@ -1200,7 +1200,6 @@ int main(int argc, char *argv[])
 // 3. Run simulation
 //=======================================================================================
 
-    for(i=0;i<10;i++) printf("%lf %lf %lf\n",m.p[2*i].x,m.p[2*i].y,m.p[2*i].z); printf("\n");
     printf("MSG: \"Start simulation loop\"\n");
     printf("Surface ");
     printf("Growth ");
@@ -1258,6 +1257,7 @@ int main(int argc, char *argv[])
             model_save(&m,str,surf);    
             return 0;
         }        
+    	for(j=0;j<10;j++) printf("%lf %lf %lf\n",m.p[2*j].x,m.p[2*j].y,m.p[2*j].z); printf("\n");
     }
     printf("MSG: \"Simulation loop end\"\n");
 
