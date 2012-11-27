@@ -84,7 +84,8 @@ typedef struct
 //int         nt;		//number of triangles
 //double      *data;
 int			verbose;
-int			test;
+int			test1;
+int			test2;
 
 #pragma mark -
 #pragma mark [ linear algebra ]
@@ -564,11 +565,13 @@ void model_rotation(Model *m)
                     sub3D(m->p0[t->p[3]],m->p0[t->p[0]]));
         t->R=ortMat(pinvxMat(p,x));
         
-        if(test)
+        if(test1)
 	        sum+=t->R.a+t->R.b+t->R.c+t->R.d+t->R.e+t->R.f+t->R.g+t->R.h+t->R.i;
+		if(test2 && i<10)
+			printf("TEST2: model_rotation %g\n",t->R.a);
     }
-    if(test)
-    	printf("TEST: model_rotation %g\n",sum);
+    if(test1)
+    	printf("TEST1: model_rotation %g\n",sum);
 }
 void model_assemble(Model *m)
 /*
@@ -596,8 +599,10 @@ void model_assemble(Model *m)
                 f0=add3D(f0,mulMat(t->K[j][k],m->p0[t->p[k]]));
             m->f0[t->p[j]]=add3D(m->f0[t->p[j]],mulMat(t->R,f0));
         }
-        if(test)
+        if(test1)
         	sum+=f0.x+f0.y+f0.z;
+        if(test2&&i<10)
+        	printf("TEST2: model_assemble %g\n",f0.x);
     }
     
     // K' = R*K*R'
@@ -617,7 +622,7 @@ void model_assemble(Model *m)
                 if(i!=j)
                 {
                     m->ngb[t->p[j]].K[ji]=addMat(m->ngb[t->p[j]].K[ji],trnMat(K));
-                	if(test)
+                	if(test1)
                 	{
                 		sum+=m->ngb[t->p[j]].K[ji].a+m->ngb[t->p[j]].K[ji].b+m->ngb[t->p[j]].K[ji].c+
                 			 m->ngb[t->p[j]].K[ji].d+m->ngb[t->p[j]].K[ji].e+m->ngb[t->p[j]].K[ji].f+
@@ -625,10 +630,12 @@ void model_assemble(Model *m)
                 	}
                 }
             }
+        if(test2&&l<10)
+        	printf("TEST2: model_assemble %g\n",m->ngb[t->p[0]].K[0].a);
     }
     
-    if(test)
-    	printf("TEST: model_assemble %g\n",sum);
+    if(test1)
+    	printf("TEST1: model_assemble %g\n",sum);
 }    
 void model_externalForces(Model *m, double Tfib, double EfibA)
 /*
@@ -643,20 +650,24 @@ void model_externalForces(Model *m, double Tfib, double EfibA)
     {
         //m->fext[i]=sca3D(m->p[i],EfibA*(1/nor3D(m->p[i])-1/m->fibre_length[i])); // correct
         m->fext[i]=sca3D(m->p[i],EfibA*(m->fibre_length[i]/nor3D(m->p[i])-1));	// wrong (kept for testing)
-        if(test)
+        if(test1)
         	sum+=m->fext[i].x+m->fext[i].y+m->fext[i].z;
+        if(test2&&i<10)
+        	printf("TEST2: model_externalForces %g\n",m->fext[i].x);
     }
     
     // fibre plasticity
     for(i=1;i<m->np;i+=2)
     {
         m->fibre_length[i]+=(nor3D(m->p[i])-m->fibre_length[i])/Tfib;
-        if(test)
+        if(test1)
         	sum+=m->fibre_length[i];
+        if(test2&&i<10)
+        	printf("TEST2: model_externalForces %g\n",m->fibre_length[i]);
     }
     
-    if(test)
-    	printf("TEST: model_externalForces %g\n",sum);
+    if(test1)
+    	printf("TEST1: model_externalForces %g\n",sum);
 }
 void  model_configureConjugateGradient(Model *m)
 /*
@@ -685,32 +696,30 @@ void  model_configureConjugateGradient(Model *m)
             if(ngb->p[j]==i)
                 ngb->A[j]=addMat(ngb->A[j],(matrix){m->m[i],0,0, 0,m->m[i],0, 0,0,m->m[i]});
             
-            if(test)
+            if(test1)
             	sum+=ngb->A[j].a+ngb->A[j].b+ngb->A[j].c+ngb->A[j].d+ngb->A[j].e+ngb->A[j].f+ngb->A[j].g+ngb->A[j].h+ngb->A[j].i;
         }
         
         // b=M*v +dt*(K'*p-f0+fext)
         b=(double3D){0,0,0};
-        sum=0;
         for(j=0;j<ngb->n;j++)
         {
             b=add3D(b,mulMat(ngb->K[j],m->p[ngb->p[j]]));
             sum+=ngb->K[j].a+ngb->K[j].b+ngb->K[j].c+ngb->K[j].d+ngb->K[j].e+ngb->K[j].f+ngb->K[j].g+ngb->K[j].h+ngb->K[j].i;
         }
-        if(test)
-         	if(i<10)
-         		printf("TEST: model_configureConjugateGradient.1 %g\n",sum);
         b=sub3D(b,m->f0[i]);
         b=add3D(b,m->fext[i]);
         b=sca3D(b,m->dt);
         m->b[i]=add3D(sca3D(m->v[i],m->m[i]),b);
 
-        if(test)
+        if(test1)
          	sum+=m->b[i].x+m->b[i].y+m->b[i].z;
+        if(test2 && i<10)
+        	printf("TEST2: model_configureConjugateGradient %g\n",ngb->K[0].a);
     }
 	
-	if(test)
-		printf("TEST: model_configureConjugateGradient %g\n",sum);
+	if(test1)
+		printf("TEST1: model_configureConjugateGradient %g\n",sum);
 }
 void model_conjugateGradient(Model *m, int maxiter)
 /*
@@ -726,7 +735,7 @@ void model_conjugateGradient(Model *m, int maxiter)
     
     
     // 1. initialise p=r=b-A*x
-    if(test)
+    if(test1)
     	sum=0;
     for(i=0;i<m->np;i++)
     {
@@ -735,16 +744,12 @@ void model_conjugateGradient(Model *m, int maxiter)
             Sum=add3D(Sum,mulMat(m->ngb[i].A[j],m->v[m->ngb[i].p[j]]));
         m->P[i]=m->R[i]=sub3D(m->b[i],Sum);
         
-        if(test)
-        {
+        if(test1)
         	sum+=m->P[i].x+m->P[i].y+m->P[i].z;
         	
-        	if(i<10)
-        		printf("TEST: model_conjugateGradient_1.1 %g\n",m->b[i].x+m->b[i].y+m->b[i].z);
-        }
+       	if(test2&&i<10)
+       		printf("TEST2: model_conjugateGradient_1.1 %g\n",m->b[i].x);
     }
-    if(test)
-    	printf("TEST: model_conjugateGradient_1 %g\n",sum);
     
     // 2. compute the residue rold
     rold=0;
@@ -752,14 +757,12 @@ void model_conjugateGradient(Model *m, int maxiter)
     {
         rold+=dot3D(m->R[i],m->R[i]);
     }
-    if(test)
-    	printf("TEST: model_conjugateGradient_2 %g\n",rold);
+    if(test1)
+    	sum+=rold;
     
     for(k=0;k<maxiter;k++)
     {
         // 3. compute A*p
-	    if(test)
-	    	sum=0;
         for(i=0;i<m->np;i++)
         {
             Sum=(double3D){0,0,0};
@@ -767,11 +770,9 @@ void model_conjugateGradient(Model *m, int maxiter)
                 Sum=add3D(Sum,mulMat(m->ngb[i].A[j],m->P[m->ngb[i].p[j]]));
             m->Ap[i]=Sum;
             
-            if(test)
+            if(test1)
             	sum+=Sum.x+Sum.y+Sum.z;
         }
-		if(test)
-			printf("TEST: model_conjugateGradient_3 %g\n",sum);
 
         // 4. compute alpha=rold/(p'*A*p)
         den=0;
@@ -780,22 +781,18 @@ void model_conjugateGradient(Model *m, int maxiter)
         if(den<1E-10)
             den=1E-10;
         alpha=rold/den;
-		if(test)
-			printf("TEST: model_conjugateGradient_4 %g\n",alpha);
+		if(test1)
+			sum+=alpha;
         
         // 5. update x and r
-	    if(test)
-	    	sum=0;
         for(i=0;i<m->np;i++)
         {
             m->v[i]=add3D(m->v[i],sca3D(m->P[i],alpha));
             m->R[i]=sub3D(m->R[i],sca3D(m->Ap[i],alpha));
             
-            if(test)
+            if(test1)
             	sum+=m->v[i].x+m->v[i].y+m->v[i].z+m->R[i].x+m->R[i].y+m->R[i].z;
         }
-		if(test)
-			printf("TEST: model_conjugateGradient_5 %g\n",sum);
         
         // 6. compute the new residue rnew, finish if error is small enough
         rnew=0;
@@ -803,29 +800,27 @@ void model_conjugateGradient(Model *m, int maxiter)
             rnew+=dot3D(m->R[i],m->R[i]);
         if(k>1 && rnew<0.001)
             break;
-		if(test)
-			printf("TEST: model_conjugateGradient_6 %g\n",rnew);
+		if(test1)
+			sum+=rnew;
         
         // 7. compute beta=rnew/rold
         beta=rnew/rold;
         rold=rnew;
-		if(test)
-			printf("TEST: model_conjugateGradient_7 %g\n",beta+rold);
+		if(test1)
+			sum+=beta+rold;
         
         // 8. update p
-	    if(test)
-	    	sum=0;
         for(i=0;i<m->np;i++)
         {
             m->P[i]=add3D(m->R[i],sca3D(m->P[i],beta));
             
-            if(test)
+            if(test1)
             	sum+=m->P[i].x+m->P[i].y+m->P[i].z;
         }
-		if(test)
-			printf("TEST: model_conjugateGradient_8 %g\n",sum);
     }
     //printf("%i %lf ",k,rnew);    // k=number_iterations, r=residual_error
+	if(test1)
+		printf("TEST1: model_conjugateGradient_8 %g\n",sum);
 }
 void model_updatePosition(Model *m)
 /*
@@ -840,12 +835,12 @@ void model_updatePosition(Model *m)
     {
         m->p[i]=add3D(m->p[i],sca3D(m->v[i],m->dt));
         
-        if(test)
+        if(test1)
         	sum+=m->p[i].x+m->p[i].y+m->p[i].z;
     }
     
-    if(test)
-    	printf("TEST: model_updatePosition %g\n",sum);
+    if(test1)
+    	printf("TEST1: model_updatePosition %g\n",sum);
 }
 void model_addToHash(Model *m, unsigned int hash, int vertexIndex, int iter)
 /*
@@ -1158,6 +1153,8 @@ simulate it, save the result, free it\n\
  -step          Save the mesh every 'step' iterations [default: 0]\n\
  -h             help\n\
  -v             verbose\n\
+ -t1            Type 1 test: prints one summary value per function\n\
+ -t2            Type 2 test: prints the 10 first values produced by the functions\
  ");
      exit(0);
 }
@@ -1200,7 +1197,8 @@ int main(int argc, char *argv[])
     double  flength;
     
     verbose=0;
-    test=0;
+    test1=0;
+    test2=0;
     
 //=======================================================================================
 // 1. Read arguments
@@ -1257,8 +1255,11 @@ int main(int argc, char *argv[])
         if(strcmp(argv[i],"-v")==0)
             verbose=1;
         else
-        if(strcmp(argv[i],"-t")==0)
-            test=1;
+        if(strcmp(argv[i],"-t1")==0)
+            test1=1;
+        else
+        if(strcmp(argv[i],"-t2")==0)
+            test2=1;
         else
             printf("WARNING: Unknown argument %s\n",argv[i]);
         i++;
