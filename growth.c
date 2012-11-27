@@ -1376,7 +1376,6 @@ int main(int argc, char *argv[])
         model_configureConjugateGradient(&m);                               // compute A=M-dt^2*K', b=M*v-dt*(K'*p-f0+fext)
         model_conjugateGradient(&m,10);                                     // solve A*v=b for the vertex velocities v
         model_updatePosition(&m);                                           // update vertex position based on velocities
-       	for(j=0;j<10;j++) printf("%lf %lf %lf\n",m.p[2*j].x,m.p[2*j].y,m.p[2*j].z); printf("\n");
 
         // cortical layer plasticity
         for(j=0;j<m.np;j++)
