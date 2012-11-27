@@ -729,7 +729,12 @@ void model_conjugateGradient(Model *m, int maxiter)
         m->P[i]=m->R[i]=sub3D(m->b[i],Sum);
         
         if(test)
+        {
         	sum+=m->P[i].x+m->P[i].y+m->P[i].z;
+        	
+        	if(i<10)
+        		printf("TEST: model_conjugateGradient_1.1 %g\n",Sum.x+Sum.y+Sum.z);
+        }
     }
     if(test)
     	printf("TEST: model_conjugateGradient_1 %g\n",sum);
