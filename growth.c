@@ -424,6 +424,14 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
     free(verts);
     free(tris);
     
+    if(test2)
+    {
+    	for(i=0;i<10;i++)
+    	{
+    		printf("TEST2: model_newFromMeshFile %g\n",m->t[i].K[1][0].b);
+    	}
+    }
+    
     // init fibres
     for(i=0;i<m->np;i++)
         m->fibre_length[i]=nor3D(m->p0[i]);
@@ -434,12 +442,12 @@ void model_stiffness(Model *m, Tetra *t)
  tetrahedron t.
  */
 {
-    int            i,j;
-    double3D        x[3];
-    double3D        y[4];
-    double        det;
-    double        V,E,v;
-    double        a,b,c;
+    int         i,j;
+    double3D    x[3];
+    double3D    y[4];
+    double      det;
+    double      V,E,v;
+    double      a,b,c;
     
     for(i=1;i<4;i++)
         x[i]=sub3D(m->p0[t->p[i]],m->p0[t->p[0]]);
@@ -472,14 +480,14 @@ void model_stiffness(Model *m, Tetra *t)
         for(j=0;j<4;j++)
         {
             t->K[i][j]=(matrix){    a*y[i].x*y[j].x+c*(y[i].y*y[j].y+y[i].z*y[j].z),
-                b*y[i].x*y[j].y+c*(y[i].y*y[j].x),
-                b*y[i].x*y[j].z+c*(y[i].z*y[j].x),
-                b*y[i].y*y[j].x+c*(y[i].x*y[j].y),
-                a*y[i].y*y[j].y+c*(y[i].x*y[j].x+y[i].z*y[j].z),
-                b*y[i].y*y[j].z+c*(y[i].z*y[j].y),
-                b*y[i].z*y[j].x+c*(y[i].x*y[j].z),
-                b*y[i].z*y[j].y+c*(y[i].y*y[j].z),
-                a*y[i].z*y[j].z+c*(y[i].y*y[j].y+y[i].x*y[j].x)};
+									b*y[i].x*y[j].y+c*(y[i].y*y[j].x),
+									b*y[i].x*y[j].z+c*(y[i].z*y[j].x),
+									b*y[i].y*y[j].x+c*(y[i].x*y[j].y),
+									a*y[i].y*y[j].y+c*(y[i].x*y[j].x+y[i].z*y[j].z),
+									b*y[i].y*y[j].z+c*(y[i].z*y[j].y),
+									b*y[i].z*y[j].x+c*(y[i].x*y[j].z),
+									b*y[i].z*y[j].y+c*(y[i].y*y[j].z),
+									a*y[i].z*y[j].z+c*(y[i].y*y[j].y+y[i].x*y[j].x)};
         }
 }
 void model_addEdge(Model *m, int i, int j, Tetra *t)
