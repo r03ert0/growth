@@ -719,6 +719,8 @@ void model_conjugateGradient(Model *m, int maxiter)
     
     
     // 1. initialise p=r=b-A*x
+    if(test)
+    	sum=0;
     for(i=0;i<m->np;i++)
     {
         Sum=(double3D){0,0,0};
@@ -729,23 +731,36 @@ void model_conjugateGradient(Model *m, int maxiter)
         if(test)
         	sum+=m->P[i].x+m->P[i].y+m->P[i].z;
     }
+    if(test)
+    	printf("TEST: model_conjugateGradient_1 %g\n",sum);
     
     // 2. compute the residue rold
     rold=0;
     for(i=0;i<m->np;i++)
+    {
         rold+=dot3D(m->R[i],m->R[i]);
+    }
+    if(test)
+    	printf("TEST: model_conjugateGradient_2 %g\n",rold);
     
     for(k=0;k<maxiter;k++)
     {
         // 3. compute A*p
+	    if(test)
+	    	sum=0;
         for(i=0;i<m->np;i++)
         {
             Sum=(double3D){0,0,0};
             for(j=0;j<m->ngb[i].n;j++)
                 Sum=add3D(Sum,mulMat(m->ngb[i].A[j],m->P[m->ngb[i].p[j]]));
             m->Ap[i]=Sum;
+            
+            if(test)
+            	sum+=Sum.x+Sum.y+Sum.z;
         }
-        
+		if(test)
+			printf("TEST: model_conjugateGradient_3 %g\n",sum);
+
         // 4. compute alpha=rold/(p'*A*p)
         den=0;
         for(i=0;i<m->np;i++)
@@ -753,13 +768,22 @@ void model_conjugateGradient(Model *m, int maxiter)
         if(den<1E-10)
             den=1E-10;
         alpha=rold/den;
+		if(test)
+			printf("TEST: model_conjugateGradient_4 %g\n",alpha);
         
         // 5. update x and r
+	    if(test)
+	    	sum=0;
         for(i=0;i<m->np;i++)
         {
             m->v[i]=add3D(m->v[i],sca3D(m->P[i],alpha));
             m->R[i]=sub3D(m->R[i],sca3D(m->Ap[i],alpha));
+            
+            if(test)
+            	sum+=m->v[i].x+m->v[i].y+m->v[i].z+m->R[i].x+m->R[i].y+m->R[i].z;
         }
+		if(test)
+			printf("TEST: model_conjugateGradient_5 %g\n",sum);
         
         // 6. compute the new residue rnew, finish if error is small enough
         rnew=0;
@@ -767,12 +791,18 @@ void model_conjugateGradient(Model *m, int maxiter)
             rnew+=dot3D(m->R[i],m->R[i]);
         if(k>1 && rnew<0.001)
             break;
+		if(test)
+			printf("TEST: model_conjugateGradient_6 %g\n",rnew);
         
         // 7. compute beta=rnew/rold
         beta=rnew/rold;
         rold=rnew;
+		if(test)
+			printf("TEST: model_conjugateGradient_7 %g\n",beta+rold);
         
         // 8. update p
+	    if(test)
+	    	sum=0;
         for(i=0;i<m->np;i++)
         {
             m->P[i]=add3D(m->R[i],sca3D(m->P[i],beta));
@@ -780,11 +810,10 @@ void model_conjugateGradient(Model *m, int maxiter)
             if(test)
             	sum+=m->P[i].x+m->P[i].y+m->P[i].z;
         }
+		if(test)
+			printf("TEST: model_conjugateGradient_8 %g\n",sum);
     }
     //printf("%i %lf ",k,rnew);    // k=number_iterations, r=residual_error
-    
-    if(test)
-    	printf("TEST: model_conjugateGradient %g\n",sum);
 }
 void model_updatePosition(Model *m)
 /*
