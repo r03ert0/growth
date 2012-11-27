@@ -699,7 +699,12 @@ void  model_configureConjugateGradient(Model *m)
         m->b[i]=add3D(sca3D(m->v[i],m->m[i]),b);
 
         if(test)
+        {
          	sum+=m->b[i].x+m->b[i].y+m->b[i].z;
+         	
+         	if(i<10)
+         		printf("TEST: model_configureConjugateGradient.1 %g\n",m->b[i].x+m->b[i].y+m->b[i].z);
+        }
     }
 	
 	if(test)
