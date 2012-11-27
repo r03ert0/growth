@@ -602,7 +602,10 @@ void model_assemble(Model *m)
         if(test1)
         	sum+=f0.x+f0.y+f0.z;
         if(test2&&i<10)
-        	printf("TEST2: model_assemble %g\n",f0.x);
+        {
+        	printf("TEST2: model_assemble %g\n",t->K[0][0].a);
+        	printf("TEST2: model_assemble %g\n",m->p0[t->p[0]].x);
+        }
     }
     
     // K' = R*K*R'
