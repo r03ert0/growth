@@ -84,6 +84,7 @@ typedef struct
 //int         nt;		//number of triangles
 //double      *data;
 int			verbose;
+int			test;
 
 #pragma mark -
 #pragma mark [ linear algebra ]
@@ -547,21 +548,27 @@ void model_rotation(Model *m)
  to handle large deformations)
  */
 {
-    int        i;
-    Tetra    *t;
-    matrix    p,x;
+    int     i;
+    Tetra   *t;
+    matrix  p,x;
+    double	sum=0;
     
     for(i=0;i<m->nt;i++)
     {
         t=&(m->t[i]);
         p=vecs2mat( sub3D(m->p[t->p[1]],m->p[t->p[0]]),
-                   sub3D(m->p[t->p[2]],m->p[t->p[0]]),
-                   sub3D(m->p[t->p[3]],m->p[t->p[0]]));
+                    sub3D(m->p[t->p[2]],m->p[t->p[0]]),
+                    sub3D(m->p[t->p[3]],m->p[t->p[0]]));
         x=vecs2mat( sub3D(m->p0[t->p[1]],m->p0[t->p[0]]),
-                   sub3D(m->p0[t->p[2]],m->p0[t->p[0]]),
-                   sub3D(m->p0[t->p[3]],m->p0[t->p[0]]));
+                    sub3D(m->p0[t->p[2]],m->p0[t->p[0]]),
+                    sub3D(m->p0[t->p[3]],m->p0[t->p[0]]));
         t->R=ortMat(pinvxMat(p,x));
+        
+        if(test)
+	        sum+=t->R.a+t->R.b+t->R.c+t->R.d+t->R.e+t->R.f+t->R.g+t->R.h+t->R.i;
     }
+    if(test)
+    	printf("TEST: model_rotation %g\n",sum);
 }
 void model_assemble(Model *m)
 /*
@@ -569,11 +576,12 @@ void model_assemble(Model *m)
  single one (sparsely coded)
  */
 {
-    int            i,j,k,l;
-    int            ij,ji;
-    double3D        f0;
-    Tetra        *t;
-    matrix        K;
+    int         i,j,k,l;
+    int         ij,ji;
+    double3D    f0;
+    Tetra       *t;
+    matrix      K;
+    double		sum=0;
     
     // f0 = R*K*x
     for(i=0;i<m->np;i++)
@@ -588,6 +596,8 @@ void model_assemble(Model *m)
                 f0=add3D(f0,mulMat(t->K[j][k],m->p0[t->p[k]]));
             m->f0[t->p[j]]=add3D(m->f0[t->p[j]],mulMat(t->R,f0));
         }
+        if(test)
+        	sum+=f0.x+f0.y+f0.z;
     }
     
     // K' = R*K*R'
@@ -605,25 +615,48 @@ void model_assemble(Model *m)
                 ji=t->ngb[j][i];    // i in j's neighbours
                 m->ngb[t->p[i]].K[ij]=addMat(m->ngb[t->p[i]].K[ij],K);        
                 if(i!=j)
+                {
                     m->ngb[t->p[j]].K[ji]=addMat(m->ngb[t->p[j]].K[ji],trnMat(K));
+                	if(test)
+                	{
+                		sum+=m->ngb[t->p[j]].K[ji].a+m->ngb[t->p[j]].K[ji].b+m->ngb[t->p[j]].K[ji].c+
+                			 m->ngb[t->p[j]].K[ji].d+m->ngb[t->p[j]].K[ji].e+m->ngb[t->p[j]].K[ji].f+
+                			 m->ngb[t->p[j]].K[ji].g+m->ngb[t->p[j]].K[ji].h+m->ngb[t->p[j]].K[ji].i;
+                	}
+                }
             }
     }
+    
+    if(test)
+    	printf("TEST: model_assemble %g\n",sum);
 }    
 void model_externalForces(Model *m, double Tfib, double EfibA)
 /*
  Compute external forces. Here, the action of radial fibres
  */
 {
-    int            i;
+    int     i;
+    double	sum=0;
     
     // fibre elasticity
     for(i=1;i<m->np;i+=2)
-        //m->fext[i]=sca3D(m->p[i],EfibA*(1/nor3D(m->p[i])-1/m->fibre_length[i]));
-        m->fext[i]=sca3D(m->p[i],EfibA*(m->fibre_length[i]/nor3D(m->p[i])-1));
+    {
+        //m->fext[i]=sca3D(m->p[i],EfibA*(1/nor3D(m->p[i])-1/m->fibre_length[i])); // correct
+        m->fext[i]=sca3D(m->p[i],EfibA*(m->fibre_length[i]/nor3D(m->p[i])-1));	// wrong (kept for testing)
+        if(test)
+        	sum+=m->fext[i].x+m->fext[i].y+m->fext[i].z;
+    }
     
     // fibre plasticity
     for(i=1;i<m->np;i+=2)
+    {
         m->fibre_length[i]+=(nor3D(m->p[i])-m->fibre_length[i])/Tfib;
+        if(test)
+        	sum+=m->fibre_length[i];
+    }
+    
+    if(test)
+    	printf("TEST: model_externalForces %g\n",sum);
 }
 void  model_configureConjugateGradient(Model *m)
 /*
@@ -636,9 +669,10 @@ void  model_configureConjugateGradient(Model *m)
     // A =(M-dt^2*K') = (M-dt^2*R*K*R')
     // b = M*v' + dt*(K'p'-f0+fext) = M*v' + dt*(R*K*R'*p'-R*K*v+fext)
     
-    int            i,j;
-    double3D        b;
-    Neighbours    *ngb;
+    int         i,j;
+    double3D    b;
+    Neighbours  *ngb;
+    double		sum=0;
     
     for(i=0;i<m->np;i++)
     {
@@ -650,6 +684,9 @@ void  model_configureConjugateGradient(Model *m)
             ngb->A[j]=scaMat(ngb->K[j],-m->dt*m->dt);
             if(ngb->p[j]==i)
                 ngb->A[j]=addMat(ngb->A[j],(matrix){m->m[i],0,0, 0,m->m[i],0, 0,0,m->m[i]});
+            
+            if(test)
+            	sum+=ngb->A[j].a+ngb->A[j].b+ngb->A[j].c+ngb->A[j].d+ngb->A[j].e+ngb->A[j].f+ngb->A[j].g+ngb->A[j].h+ngb->A[j].i;
         }
         
         // b=M*v +dt*(K'*p-f0+fext)
@@ -660,27 +697,37 @@ void  model_configureConjugateGradient(Model *m)
         b=add3D(b,m->fext[i]);
         b=sca3D(b,m->dt);
         m->b[i]=add3D(sca3D(m->v[i],m->m[i]),b);
+
+        if(test)
+         	sum+=m->b[i].x+m->b[i].y+m->b[i].z;
     }
+	
+	if(test)
+		printf("TEST: model_configureConjugateGradient %g\n",sum);
 }
 void model_conjugateGradient(Model *m, int maxiter)
 /*
  Conjugate gradient method
  */
 {
-    int        i,j,k;
-    double    den;
-    double    rold,rnew;
-    double3D    sum;
-    double    alpha,beta;
+    int         i,j,k;
+    double      den;
+    double      rold,rnew;
+    double3D    Sum;
+    double      alpha,beta;
+    double		sum=0;
     
     
     // 1. initialise p=r=b-A*x
     for(i=0;i<m->np;i++)
     {
-        sum=(double3D){0,0,0};
+        Sum=(double3D){0,0,0};
         for(j=0;j<m->ngb[i].n;j++)
-            sum=add3D(sum,mulMat(m->ngb[i].A[j],m->v[m->ngb[i].p[j]]));
-        m->P[i]=m->R[i]=sub3D(m->b[i],sum);
+            Sum=add3D(Sum,mulMat(m->ngb[i].A[j],m->v[m->ngb[i].p[j]]));
+        m->P[i]=m->R[i]=sub3D(m->b[i],Sum);
+        
+        if(test)
+        	sum+=m->P[i].x+m->P[i].y+m->P[i].z;
     }
     
     // 2. compute the residue rold
@@ -693,10 +740,10 @@ void model_conjugateGradient(Model *m, int maxiter)
         // 3. compute A*p
         for(i=0;i<m->np;i++)
         {
-            sum=(double3D){0,0,0};
+            Sum=(double3D){0,0,0};
             for(j=0;j<m->ngb[i].n;j++)
-                sum=add3D(sum,mulMat(m->ngb[i].A[j],m->P[m->ngb[i].p[j]]));
-            m->Ap[i]=sum;
+                Sum=add3D(Sum,mulMat(m->ngb[i].A[j],m->P[m->ngb[i].p[j]]));
+            m->Ap[i]=Sum;
         }
         
         // 4. compute alpha=rold/(p'*A*p)
@@ -727,9 +774,17 @@ void model_conjugateGradient(Model *m, int maxiter)
         
         // 8. update p
         for(i=0;i<m->np;i++)
+        {
             m->P[i]=add3D(m->R[i],sca3D(m->P[i],beta));
+            
+            if(test)
+            	sum+=m->P[i].x+m->P[i].y+m->P[i].z;
+        }
     }
     //printf("%i %lf ",k,rnew);    // k=number_iterations, r=residual_error
+    
+    if(test)
+    	printf("TEST: model_conjugateGradient %g\n",sum);
 }
 void model_updatePosition(Model *m)
 /*
@@ -737,9 +792,19 @@ void model_updatePosition(Model *m)
  to update the position of the model vertices
  */
 {
-    int    i;
+    int     i;
+    double	sum=0;
+    
     for(i=0;i<m->np;i++)
+    {
         m->p[i]=add3D(m->p[i],sca3D(m->v[i],m->dt));
+        
+        if(test)
+        	sum+=m->p[i].x+m->p[i].y+m->p[i].z;
+    }
+    
+    if(test)
+    	printf("TEST: model_updatePosition %g\n",sum);
 }
 void model_addToHash(Model *m, unsigned int hash, int vertexIndex, int iter)
 /*
@@ -1094,6 +1159,7 @@ int main(int argc, char *argv[])
     double  flength;
     
     verbose=0;
+    test=0;
     
 //=======================================================================================
 // 1. Read arguments
@@ -1149,6 +1215,9 @@ int main(int argc, char *argv[])
         else
         if(strcmp(argv[i],"-v")==0)
             verbose=1;
+        else
+        if(strcmp(argv[i],"-t")==0)
+            test=1;
         else
             printf("WARNING: Unknown argument %s\n",argv[i]);
         i++;
