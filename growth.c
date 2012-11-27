@@ -459,7 +459,7 @@ void model_stiffness(Model *m)
 {
     int         i,j,l;
     Tetra 		*t;
-    double3D    x[3];
+    double3D    x[4];
     double3D    y[4];
     double      det;
     double      V,E,v;
@@ -476,20 +476,20 @@ void model_stiffness(Model *m)
 		V=det/6.0   /*TEST*/ *(-1);
 		
 		y[1]=(double3D){    (x[2].y*x[3].z-x[2].z*x[3].y)/det,
-			(x[2].z*x[3].x-x[2].x*x[3].z)/det,
-			(x[2].x*x[3].y-x[2].y*x[3].x)/det};
+							(x[2].z*x[3].x-x[2].x*x[3].z)/det,
+							(x[2].x*x[3].y-x[2].y*x[3].x)/det};
 		
 		y[2]=(double3D){    (x[1].z*x[3].y-x[1].y*x[3].z)/det,
-			(x[1].x*x[3].z-x[1].z*x[3].x)/det,
-			(x[1].y*x[3].x-x[1].x*x[3].y)/det};
+							(x[1].x*x[3].z-x[1].z*x[3].x)/det,
+							(x[1].y*x[3].x-x[1].x*x[3].y)/det};
 		
 		y[3]=(double3D){    (x[1].y*x[2].z-x[1].z*x[2].y)/det,
-			(x[1].z*x[2].x-x[1].x*x[2].z)/det,
-			(x[1].x*x[2].y-x[1].y*x[2].x)/det};
+							(x[1].z*x[2].x-x[1].x*x[2].z)/det,
+							(x[1].x*x[2].y-x[1].y*x[2].x)/det};
 		
-		y[0]=(double3D){ -y[1].x-y[2].x-y[3].x,
-			-y[1].y-y[2].y-y[3].y,
-			-y[1].z-y[2].z-y[3].z};
+		y[0]=(double3D){ 	-y[1].x-y[2].x-y[3].x,
+							-y[1].y-y[2].y-y[3].y,
+							-y[1].z-y[2].z-y[3].z};
 		
 		E=t->young;
 		v=t->poisson;
