@@ -733,7 +733,7 @@ void model_conjugateGradient(Model *m, int maxiter)
         	sum+=m->P[i].x+m->P[i].y+m->P[i].z;
         	
         	if(i<10)
-        		printf("TEST: model_conjugateGradient_1.1 %g\n",Sum.x+Sum.y+Sum.z);
+        		printf("TEST: model_conjugateGradient_1.1 %g\n",m->b[i].x+m->b[i].y+m->b[i].z);
         }
     }
     if(test)
