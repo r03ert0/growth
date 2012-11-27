@@ -1405,8 +1405,11 @@ int main(int argc, char *argv[])
         
         if(model_collision(&m,i+1))
         {
-            sprintf(str,"%s.%i.txt",output,i);
-            model_save(&m,str,surf);    
+            if(output)
+            {
+            	sprintf(str,"%s.%i.txt",output,i);
+            	model_save(&m,str,surf);
+            }
             return 0;
         }        
     }
