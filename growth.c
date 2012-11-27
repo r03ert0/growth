@@ -307,13 +307,15 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
  */
 {
     FILE        *f;
-    int            *neighb,nverts,ntris,i;
+    int         *neighb,nverts,ntris,i;
     double3D    *verts,*n,n1;
-    int3D        *tris;
+    int3D       *tris;
     char        str[256];
-    float        avrgEdgeLength=0;
-    double3D     N;                     // normal vector, used for surface orientation test
+    float       avrgEdgeLength=0;
+    double3D    N;                     // normal vector, used for surface orientation test
     float       orientation;            // result of the surface orientation test
+    float		sum=0;
+    
     // open surface file
     f=fopen(path,"r");
     fscanf(f," %i %i ", &nverts, &ntris);
@@ -321,6 +323,8 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
     {
         printf("VAR: Nverts %i\n",nverts);
         printf("VAR: Ntriangles %i\n",ntris);
+        if(test1)
+        	sum+=nverts+ntris;
     }
     verts=(double3D*)calloc(nverts,sizeof(double3D));
     tris=(int3D*)calloc(ntris,sizeof(int3D));
@@ -328,11 +332,17 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
     {
         fgets(str,256,f);
         sscanf(str," %lf %lf %lf ",&(verts[i].x),&(verts[i].y),&(verts[i].z));
+        
+        if(test1)
+        	sum+=verts[i].x+verts[i].y+verts[i].z;
     }
     for(i=0;i<ntris;i++)
     {
         fgets(str,256,f);
         sscanf(str," %i %i %i ",&tris[i].a,&tris[i].b,&tris[i].c);
+        
+        if(test1)
+        	sum+=tris[i].a+tris[i].b+tris[i].c;
     }
     fclose(f);
     
@@ -357,7 +367,9 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
         avrgEdgeLength+=nor3D(sub3D(verts[tris[i].b],verts[tris[i].c]));
         avrgEdgeLength+=nor3D(sub3D(verts[tris[i].c],verts[tris[i].a]));
     }
-    avrgEdgeLength/=3.0*ntris;    
+    avrgEdgeLength/=3.0*ntris;
+    if(test1)
+    	sum+=avrgEdgeLength;
     
     // find bounding box
     float max[3]={0,0,0},min[3]={0,0,0};
@@ -420,75 +432,94 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
         model_setTetra(m,3*i+0,2*tris[i].b+1,2*tris[i].a+1,2*tris[i].c+0,2*tris[i].c+1,E,nu,rho); // b1, a1, c0, c1
         model_setTetra(m,3*i+1,2*tris[i].c+0,2*tris[i].b+1,2*tris[i].a+0,2*tris[i].a+1,E,nu,rho); // c0, b1, a0, a1
         model_setTetra(m,3*i+2,2*tris[i].a+0,2*tris[i].c+0,2*tris[i].b+0,2*tris[i].b+1,E,nu,rho); // a0, c0, b0, b1
+        
+        if(test1)
+        	sum+=m->t[i].p[0]+m->t[i].p[1]+m->t[i].p[2]+m->t[i].p[3];
     }
     free(verts);
     free(tris);
     
-    if(test2)
+    // init fibre length
+    for(i=0;i<m->np;i++)
     {
-    	for(i=0;i<10;i++)
-    	{
-    		printf("TEST2: model_newFromMeshFile %g\n",m->t[i].K[1][0].b);
-    	}
+        m->fibre_length[i]=nor3D(m->p0[i]);
+        
+        if(test1)
+        	sum+=m->fibre_length[i];
     }
     
-    // init fibres
-    for(i=0;i<m->np;i++)
-        m->fibre_length[i]=nor3D(m->p0[i]);
+    if(test1)
+    	printf("TEST1: model_newFromMeshFile %g\n",sum);
 }
-void model_stiffness(Model *m, Tetra *t)
+void model_stiffness(Model *m)
 /*
  Compute stiffness matrices for each pair of vertices in
- tetrahedron t.
+ each tetrahedron t.
  */
 {
-    int         i,j;
+    int         i,j,l;
+    Tetra 		*t;
     double3D    x[3];
     double3D    y[4];
     double      det;
     double      V,E,v;
     double      a,b,c;
+    double		sum=0;
     
-    for(i=1;i<4;i++)
-        x[i]=sub3D(m->p0[t->p[i]],m->p0[t->p[0]]);
-    det=detMat(vecs2mat(x[1],x[2],x[3]));
-    V=det/6.0   /*TEST*/ *(-1);
-    
-    y[1]=(double3D){    (x[2].y*x[3].z-x[2].z*x[3].y)/det,
-        (x[2].z*x[3].x-x[2].x*x[3].z)/det,
-        (x[2].x*x[3].y-x[2].y*x[3].x)/det};
-    
-    y[2]=(double3D){    (x[1].z*x[3].y-x[1].y*x[3].z)/det,
-        (x[1].x*x[3].z-x[1].z*x[3].x)/det,
-        (x[1].y*x[3].x-x[1].x*x[3].y)/det};
-    
-    y[3]=(double3D){    (x[1].y*x[2].z-x[1].z*x[2].y)/det,
-        (x[1].z*x[2].x-x[1].x*x[2].z)/det,
-        (x[1].x*x[2].y-x[1].y*x[2].x)/det};
-    
-    y[0]=(double3D){ -y[1].x-y[2].x-y[3].x,
-        -y[1].y-y[2].y-y[3].y,
-        -y[1].z-y[2].z-y[3].z};
-    
-    E=t->young;
-    v=t->poisson;
-    a=V*E*(1-v)/(1+v)/(1-2*v);
-    b=V*E*v/(1+v)/(1-2*v);
-    c=V*E/(1+v) /* TEST */ /2.0;
-    
-    for(i=0;i<4;i++)
-        for(j=0;j<4;j++)
-        {
-            t->K[i][j]=(matrix){    a*y[i].x*y[j].x+c*(y[i].y*y[j].y+y[i].z*y[j].z),
-									b*y[i].x*y[j].y+c*(y[i].y*y[j].x),
-									b*y[i].x*y[j].z+c*(y[i].z*y[j].x),
-									b*y[i].y*y[j].x+c*(y[i].x*y[j].y),
-									a*y[i].y*y[j].y+c*(y[i].x*y[j].x+y[i].z*y[j].z),
-									b*y[i].y*y[j].z+c*(y[i].z*y[j].y),
-									b*y[i].z*y[j].x+c*(y[i].x*y[j].z),
-									b*y[i].z*y[j].y+c*(y[i].y*y[j].z),
-									a*y[i].z*y[j].z+c*(y[i].y*y[j].y+y[i].x*y[j].x)};
-        }
+    for(l=0;l<m->nt;l++)
+    {
+		t=&(m->t[l]);
+		
+		for(i=1;i<4;i++)
+			x[i]=sub3D(m->p0[t->p[i]],m->p0[t->p[0]]);
+		det=detMat(vecs2mat(x[1],x[2],x[3]));
+		V=det/6.0   /*TEST*/ *(-1);
+		
+		y[1]=(double3D){    (x[2].y*x[3].z-x[2].z*x[3].y)/det,
+			(x[2].z*x[3].x-x[2].x*x[3].z)/det,
+			(x[2].x*x[3].y-x[2].y*x[3].x)/det};
+		
+		y[2]=(double3D){    (x[1].z*x[3].y-x[1].y*x[3].z)/det,
+			(x[1].x*x[3].z-x[1].z*x[3].x)/det,
+			(x[1].y*x[3].x-x[1].x*x[3].y)/det};
+		
+		y[3]=(double3D){    (x[1].y*x[2].z-x[1].z*x[2].y)/det,
+			(x[1].z*x[2].x-x[1].x*x[2].z)/det,
+			(x[1].x*x[2].y-x[1].y*x[2].x)/det};
+		
+		y[0]=(double3D){ -y[1].x-y[2].x-y[3].x,
+			-y[1].y-y[2].y-y[3].y,
+			-y[1].z-y[2].z-y[3].z};
+		
+		E=t->young;
+		v=t->poisson;
+		a=V*E*(1-v)/(1+v)/(1-2*v);
+		b=V*E*v/(1+v)/(1-2*v);
+		c=V*E/(1+v) /* TEST */ /2.0;
+		
+		if(test2 && l<10)
+			printf("TEST2: model_stiffness %g\n",E+v+V);
+
+		for(i=0;i<4;i++)
+			for(j=0;j<4;j++)
+			{
+				t->K[i][j]=(matrix){    a*y[i].x*y[j].x+c*(y[i].y*y[j].y+y[i].z*y[j].z),
+										b*y[i].x*y[j].y+c*(y[i].y*y[j].x),
+										b*y[i].x*y[j].z+c*(y[i].z*y[j].x),
+										b*y[i].y*y[j].x+c*(y[i].x*y[j].y),
+										a*y[i].y*y[j].y+c*(y[i].x*y[j].x+y[i].z*y[j].z),
+										b*y[i].y*y[j].z+c*(y[i].z*y[j].y),
+										b*y[i].z*y[j].x+c*(y[i].x*y[j].z),
+										b*y[i].z*y[j].y+c*(y[i].y*y[j].z),
+										a*y[i].z*y[j].z+c*(y[i].y*y[j].y+y[i].x*y[j].x)};
+				if(test1)
+					sum+=t->K[i][j].a+t->K[i][j].b+t->K[i][j].c+t->K[i][j].d+t->K[i][j].e+t->K[i][j].f+t->K[i][j].g+t->K[i][j].h+t->K[i][j].i;
+			}
+		if(test2 && l<10)
+			printf("TEST2: model_stiffness %g\n",t->K[0][0].a);
+    }
+    if(test1)
+    	printf("TEST1: model_stiffness %g\n",sum);
 }
 void model_addEdge(Model *m, int i, int j, Tetra *t)
 /*
@@ -1285,8 +1316,7 @@ int main(int argc, char *argv[])
     model_newFromMeshFile(&m,input,Ectx,nu,rho,thickness);
     
     // init element stiffness matrices
-    for(i=0;i<m.nt;i++)                            // K
-        model_stiffness(&m, &(m.t[i]));
+    model_stiffness(&m);
     
     // init mesh topology
     model_topology(&m);
@@ -1356,7 +1386,7 @@ int main(int argc, char *argv[])
         //for(j=0;j<m.np;j++) m.p0[j]=m.p[j];
         
         // TEST: recompute stiffness matrices
-        //for(j=0;j<m.nt;j++) model_stiffness(&m, &(m.t[j]));
+        //model_stiffness(&m);
         
         if(step>0 && i%step==0)
         {
