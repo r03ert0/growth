@@ -693,18 +693,16 @@ void  model_configureConjugateGradient(Model *m)
         b=(double3D){0,0,0};
         for(j=0;j<ngb->n;j++)
             b=add3D(b,mulMat(ngb->K[j],m->p[ngb->p[j]]));
+        if(test)
+         	if(i<10)
+         		printf("TEST: model_configureConjugateGradient.1 %g\n",b.x+b.y+b.z);
         b=sub3D(b,m->f0[i]);
         b=add3D(b,m->fext[i]);
         b=sca3D(b,m->dt);
         m->b[i]=add3D(sca3D(m->v[i],m->m[i]),b);
 
         if(test)
-        {
          	sum+=m->b[i].x+m->b[i].y+m->b[i].z;
-         	
-         	if(i<10)
-         		printf("TEST: model_configureConjugateGradient.1 %g\n",m->b[i].x+m->b[i].y+m->b[i].z);
-        }
     }
 	
 	if(test)
