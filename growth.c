@@ -6,8 +6,8 @@
 #pragma mark -
 #pragma mark [ definitions ]
 
-#define MAX_NEIG    32        // maximum number of neighbouring vertices that a vertex can have
-
+#define MAX_NEIG    32  // maximum number of neighbouring vertices that a vertex can have
+#define kPi			3.141592653589793	
 typedef struct
 {
     double    x,y,z;
@@ -1419,12 +1419,6 @@ int main(int argc, char *argv[])
 // 4. Save results
 //=======================================================================================
 
-    // final model volume
-    volume=0;
-    for(j=0;j<m.nt/3;j++)
-        volume+=determinant(m.p[m.t[3*j+0].p[1]],m.p[m.t[3*j+0].p[0]],m.p[m.t[3*j+0].p[3]])/6.0;
-    printf("VAR: Final_model_volume %lf\n", volume);
-
     // final cortical volume
     volume=0;
     for(j=0;j<m.nt;j++)
@@ -1433,11 +1427,20 @@ int main(int argc, char *argv[])
                                 sub3D(m.p0[m.t[j].p[3]],m.p0[m.t[j].p[0]])))/6.0;
     printf("VAR: Final_cortical_volume %lf\n",volume);
     
+    // final model volume
+    volume=0;
+    for(j=0;j<m.nt/3;j++)
+        volume+=determinant(m.p[m.t[3*j+0].p[1]],m.p[m.t[3*j+0].p[0]],m.p[m.t[3*j+0].p[3]])/6.0;
+    printf("VAR: Final_model_volume %lf\n", volume);
+
     // final cortical surface
     surface=0;
     for(j=0;j<m.nt/3;j++)
         surface+=triangleArea(&m,m.t[3*j+0].p[1],m.t[3*j+0].p[0],m.t[3*j+0].p[3]);
     printf("VAR: Final_cortical_surface %lf\n",surface);
+
+    printf("VAR: Folding_length %lf\n",flength);
+    printf("VAR: Absolute_gyrification %lf\n",exp(log(surface)-2*log(volume)/3.0-log(36*kPi)/3.0));
 
     if(output)
     {
