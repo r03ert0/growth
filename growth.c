@@ -1410,7 +1410,7 @@ int main(int argc, char *argv[])
             	sprintf(str,"%s.%i.txt",output,i);
             	model_save(&m,str,surf);
             }
-            return 0;
+            break;
         }        
     }
     printf("MSG: \"Simulation loop end\"\n");
