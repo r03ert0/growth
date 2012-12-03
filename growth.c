@@ -7,7 +7,7 @@
 #pragma mark [ definitions ]
 
 #define MAX_NEIG    32  // maximum number of neighbouring vertices that a vertex can have
-#define kPi			3.141592653589793	
+#define kPi         3.141592653589793
 typedef struct
 {
     double    x,y,z;
@@ -23,69 +23,64 @@ typedef struct
 }int4D;
 typedef struct
 {
-    double    	a,b,c, d,e,f, g,h,i;
+    double      a,b,c, d,e,f, g,h,i;
 }matrix;
 typedef struct
 {
-    short    	timeStamp;    // time stamp for the cell creation
-    int        	i;            // vertex index
-    long    	*next;        // next cell at the same hash
+    short       timeStamp;      // time stamp for the cell creation
+    int         i;              // vertex index
+    long        *next;          // next cell at the same hash
 }HashCell;
 typedef struct
 {
-    int         n;                // number of neighbours
+    int         n;              // number of neighbours
     int         p[MAX_NEIG];    // neighbour vertex indices 
     matrix      K[MAX_NEIG];    // stiffness matrix with neighbour vertices
     matrix      A[MAX_NEIG];    // (conjugate gradient) A matrix
 }Neighbours;
 typedef struct
 {
-    int         p[4];        // vertex indices
-    int         ngb[4][4];    // position in neighbours list (Each vertex has an associated
-    // Neighbours structure. This matrix provides the position of
-    // vertex j in the neighbours list of vertex i, for i,j=0,...,3)
-    matrix      K[4][4];    // stiffness matrices
-    matrix      R;            // element rotation
-    double      young;        // young's modulus
-    double      poisson;    // poisson's ratio
+    int         p[4];           // vertex indices
+    int         ngb[4][4];      // position in neighbours list (Each vertex has an associated
+                                // Neighbours structure. This matrix provides the position of
+                                // vertex j in the neighbours list of vertex i, for i,j=0,...,3)
+    matrix      K[4][4];        // stiffness matrices
+    matrix      R;              // element rotation
+    double      young;          // young's modulus
+    double      poisson;        // poisson's ratio
 }Tetra;
 typedef struct
 {
-    int         nt;        // number of tetrahedra
-    Tetra       *t;        // tetrahedra
+    int         nt;             // number of tetrahedra
+    Tetra       *t;             // tetrahedra
     
-    int         np;        // number of vertices
-    double3D    *p0;    // vertex coordinates at rest
-    double3D    *p;        // actual vertex coordinates
-    double3D    *v;        // vertex velocity
-    double      *m;        // vertex mass
-    double3D    *f0;    // vertex internal forces (f0)
-    double3D    *fext;    // vertex external forces
-    Neighbours  *ngb;    // vertex neighbours
+    int         np;             // number of vertices
+    double3D    *p0;            // vertex coordinates at rest
+    double3D    *p;             // actual vertex coordinates
+    double3D    *v;             // vertex velocity
+    double      *m;             // vertex mass
+    double3D    *f0;            // vertex internal forces (f0)
+    double3D    *fext;          // vertex external forces
+    Neighbours  *ngb;           // vertex neighbours
     
     double      *fibre_length;
 
-    HashCell    *hash;    // collision detection hash table
-    int         nhash;    // number of cells allocated for collision detection
-    float       h;        // cell size
+    HashCell    *hash;          // collision detection hash table
+    int         nhash;          // number of cells allocated for collision detection
+    float       h;              // cell size
     
-    double3D    *b;        // (conjugate gradient) b vector
-    double3D    *Ap;    // (conjugate gradient) A*p vector
-    double3D    *R;        // (conjugate gradient) r
-    double3D    *P;        // (conjugate gradient) p
+    double3D    *b;             // (conjugate gradient) b vector
+    double3D    *Ap;            // (conjugate gradient) A*p vector
+    double3D    *R;             // (conjugate gradient) r
+    double3D    *P;             // (conjugate gradient) p
     
-    double   	dt;
+    double      dt;
 }Model;
 
 // Global variables
-//double3D    *p;
-//int3D       *t;
-//int         np; 	//number of vertices
-//int         nt;		//number of triangles
-//double      *data;
-int			verbose;
-int			test1;
-int			test2;
+int         verbose;
+int         test1;
+int         test2;
 
 #pragma mark -
 #pragma mark [ linear algebra ]
@@ -314,7 +309,7 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
     float       avrgEdgeLength=0;
     double3D    N;                     // normal vector, used for surface orientation test
     float       orientation;            // result of the surface orientation test
-    float		sum=0;
+    float       sum=0;
     
     // open surface file
     f=fopen(path,"r");
@@ -324,7 +319,7 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
         printf("VAR: Nverts %i\n",nverts);
         printf("VAR: Ntriangles %i\n",ntris);
         if(test1)
-        	sum+=nverts+ntris;
+            sum+=nverts+ntris;
     }
     verts=(double3D*)calloc(nverts,sizeof(double3D));
     tris=(int3D*)calloc(ntris,sizeof(int3D));
@@ -334,7 +329,7 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
         sscanf(str," %lf %lf %lf ",&(verts[i].x),&(verts[i].y),&(verts[i].z));
         
         if(test1)
-        	sum+=verts[i].x+verts[i].y+verts[i].z;
+            sum+=verts[i].x+verts[i].y+verts[i].z;
     }
     for(i=0;i<ntris;i++)
     {
@@ -342,7 +337,7 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
         sscanf(str," %i %i %i ",&tris[i].a,&tris[i].b,&tris[i].c);
         
         if(test1)
-        	sum+=tris[i].a+tris[i].b+tris[i].c;
+            sum+=tris[i].a+tris[i].b+tris[i].c;
     }
     fclose(f);
     
@@ -369,7 +364,7 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
     }
     avrgEdgeLength/=3.0*ntris;
     if(test1)
-    	sum+=avrgEdgeLength;
+        sum+=avrgEdgeLength;
     
     // find bounding box
     float max[3]={0,0,0},min[3]={0,0,0};
@@ -434,7 +429,7 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
         model_setTetra(m,3*i+2,2*tris[i].a+0,2*tris[i].c+0,2*tris[i].b+0,2*tris[i].b+1,E,nu,rho); // a0, c0, b0, b1
         
         if(test1)
-        	sum+=m->t[i].p[0]+m->t[i].p[1]+m->t[i].p[2]+m->t[i].p[3];
+            sum+=m->t[i].p[0]+m->t[i].p[1]+m->t[i].p[2]+m->t[i].p[3];
     }
     free(verts);
     free(tris);
@@ -445,11 +440,11 @@ void model_newFromMeshFile(Model *m, char *path, double E, double nu, double rho
         m->fibre_length[i]=nor3D(m->p0[i]);
         
         if(test1)
-        	sum+=m->fibre_length[i];
+            sum+=m->fibre_length[i];
     }
     
     if(test1)
-    	printf("TEST1: model_newFromMeshFile %g\n",sum);
+        printf("TEST1: model_newFromMeshFile %g\n",sum);
 }
 void model_stiffness(Model *m)
 /*
@@ -458,68 +453,68 @@ void model_stiffness(Model *m)
  */
 {
     int         i,j,l;
-    Tetra 		*t;
+    Tetra       *t;
     double3D    x[4];
     double3D    y[4];
     double      det;
     double      V,E,v;
     double      a,b,c;
-    double		sum=0;
+    double      sum=0;
     
     for(l=0;l<m->nt;l++)
     {
-		t=&(m->t[l]);
-		
-		for(i=1;i<4;i++)
-			x[i]=sub3D(m->p0[t->p[i]],m->p0[t->p[0]]);
-		det=detMat(vecs2mat(x[1],x[2],x[3]));
-		V=det/6.0   /*TEST*/ *(-1);
-		
-		y[1]=(double3D){    (x[2].y*x[3].z-x[2].z*x[3].y)/det,
-							(x[2].z*x[3].x-x[2].x*x[3].z)/det,
-							(x[2].x*x[3].y-x[2].y*x[3].x)/det};
-		
-		y[2]=(double3D){    (x[1].z*x[3].y-x[1].y*x[3].z)/det,
-							(x[1].x*x[3].z-x[1].z*x[3].x)/det,
-							(x[1].y*x[3].x-x[1].x*x[3].y)/det};
-		
-		y[3]=(double3D){    (x[1].y*x[2].z-x[1].z*x[2].y)/det,
-							(x[1].z*x[2].x-x[1].x*x[2].z)/det,
-							(x[1].x*x[2].y-x[1].y*x[2].x)/det};
-		
-		y[0]=(double3D){ 	-y[1].x-y[2].x-y[3].x,
-							-y[1].y-y[2].y-y[3].y,
-							-y[1].z-y[2].z-y[3].z};
-		
-		E=t->young;
-		v=t->poisson;
-		a=V*E*(1-v)/(1+v)/(1-2*v);
-		b=V*E*v/(1+v)/(1-2*v);
-		c=V*E/(1+v) /* TEST */ /2.0;
-		
-		if(test2 && l<10)
-			printf("TEST2: model_stiffness %g\n",E+v+V);
-
-		for(i=0;i<4;i++)
-			for(j=0;j<4;j++)
-			{
-				t->K[i][j]=(matrix){    a*y[i].x*y[j].x+c*(y[i].y*y[j].y+y[i].z*y[j].z),
-										b*y[i].x*y[j].y+c*(y[i].y*y[j].x),
-										b*y[i].x*y[j].z+c*(y[i].z*y[j].x),
-										b*y[i].y*y[j].x+c*(y[i].x*y[j].y),
-										a*y[i].y*y[j].y+c*(y[i].x*y[j].x+y[i].z*y[j].z),
-										b*y[i].y*y[j].z+c*(y[i].z*y[j].y),
-										b*y[i].z*y[j].x+c*(y[i].x*y[j].z),
-										b*y[i].z*y[j].y+c*(y[i].y*y[j].z),
-										a*y[i].z*y[j].z+c*(y[i].y*y[j].y+y[i].x*y[j].x)};
-				if(test1)
-					sum+=t->K[i][j].a+t->K[i][j].b+t->K[i][j].c+t->K[i][j].d+t->K[i][j].e+t->K[i][j].f+t->K[i][j].g+t->K[i][j].h+t->K[i][j].i;
-			}
-		if(test2 && l<10)
-			printf("TEST2: model_stiffness %g\n",t->K[0][0].a);
+        t=&(m->t[l]);
+        
+        for(i=1;i<4;i++)
+            x[i]=sub3D(m->p0[t->p[i]],m->p0[t->p[0]]);
+        det=detMat(vecs2mat(x[1],x[2],x[3]));
+        V=det/6.0   /*TEST*/ *(-1);
+        
+        y[1]=(double3D){    (x[2].y*x[3].z-x[2].z*x[3].y)/det,
+                            (x[2].z*x[3].x-x[2].x*x[3].z)/det,
+                            (x[2].x*x[3].y-x[2].y*x[3].x)/det};
+        
+        y[2]=(double3D){    (x[1].z*x[3].y-x[1].y*x[3].z)/det,
+                            (x[1].x*x[3].z-x[1].z*x[3].x)/det,
+                            (x[1].y*x[3].x-x[1].x*x[3].y)/det};
+        
+        y[3]=(double3D){    (x[1].y*x[2].z-x[1].z*x[2].y)/det,
+                            (x[1].z*x[2].x-x[1].x*x[2].z)/det,
+                            (x[1].x*x[2].y-x[1].y*x[2].x)/det};
+        
+        y[0]=(double3D){    -y[1].x-y[2].x-y[3].x,
+                            -y[1].y-y[2].y-y[3].y,
+                            -y[1].z-y[2].z-y[3].z};
+        
+        E=t->young;
+        v=t->poisson;
+        a=V*E*(1-v)/(1+v)/(1-2*v);
+        b=V*E*v/(1+v)/(1-2*v);
+        c=V*E/(1+v) /* TEST */ /2.0;
+        
+        if(test2 && l<10)
+            printf("TEST2: model_stiffness %i %g\n",l,E+v+V);
+    
+        for(i=0;i<4;i++)
+            for(j=0;j<4;j++)
+            {
+                t->K[i][j]=(matrix){    a*y[i].x*y[j].x+c*(y[i].y*y[j].y+y[i].z*y[j].z),
+                                        b*y[i].x*y[j].y+c*(y[i].y*y[j].x),
+                                        b*y[i].x*y[j].z+c*(y[i].z*y[j].x),
+                                        b*y[i].y*y[j].x+c*(y[i].x*y[j].y),
+                                        a*y[i].y*y[j].y+c*(y[i].x*y[j].x+y[i].z*y[j].z),
+                                        b*y[i].y*y[j].z+c*(y[i].z*y[j].y),
+                                        b*y[i].z*y[j].x+c*(y[i].x*y[j].z),
+                                        b*y[i].z*y[j].y+c*(y[i].y*y[j].z),
+                                        a*y[i].z*y[j].z+c*(y[i].y*y[j].y+y[i].x*y[j].x)};
+                if(test1)
+                    sum+=t->K[i][j].a+t->K[i][j].b+t->K[i][j].c+t->K[i][j].d+t->K[i][j].e+t->K[i][j].f+t->K[i][j].g+t->K[i][j].h+t->K[i][j].i;
+            }
+        if(test2 && l<10)
+            printf("TEST2: model_stiffness %i %g\n",l,t->K[0][0].a);
     }
     if(test1)
-    	printf("TEST1: model_stiffness %g\n",sum);
+        printf("TEST1: model_stiffness %g\n",sum);
 }
 void model_addEdge(Model *m, int i, int j, Tetra *t)
 /*
@@ -591,7 +586,7 @@ void model_rotation(Model *m)
     int     i;
     Tetra   *t;
     matrix  p,x;
-    double	sum=0;
+    double  sum=0;
     
     for(i=0;i<m->nt;i++)
     {
@@ -605,12 +600,12 @@ void model_rotation(Model *m)
         t->R=ortMat(pinvxMat(p,x));
         
         if(test1)
-	        sum+=t->R.a+t->R.b+t->R.c+t->R.d+t->R.e+t->R.f+t->R.g+t->R.h+t->R.i;
-		if(test2 && i<10)
-			printf("TEST2: model_rotation %g\n",t->R.a);
+            sum+=t->R.a+t->R.b+t->R.c+t->R.d+t->R.e+t->R.f+t->R.g+t->R.h+t->R.i;
+        if(test2 && i<10)
+            printf("TEST2: model_rotation %i %g\n",i,t->R.a+t->R.b+t->R.c+t->R.d+t->R.e+t->R.f+t->R.g+t->R.h+t->R.i);
     }
     if(test1)
-    	printf("TEST1: model_rotation %g\n",sum);
+        printf("TEST1: model_rotation %g\n",sum);
 }
 void model_assemble(Model *m)
 /*
@@ -623,7 +618,7 @@ void model_assemble(Model *m)
     double3D    f0;
     Tetra       *t;
     matrix      K;
-    double		sum=0;
+    double      sum=0;
     
     // f0 = R*K*x
     for(i=0;i<m->np;i++)
@@ -639,11 +634,11 @@ void model_assemble(Model *m)
             m->f0[t->p[j]]=add3D(m->f0[t->p[j]],mulMat(t->R,f0));
         }
         if(test1)
-        	sum+=f0.x+f0.y+f0.z;
+            sum+=f0.x+f0.y+f0.z;
         if(test2&&i<10)
         {
-        	printf("TEST2: model_assemble %g\n",t->K[0][0].a);
-        	printf("TEST2: model_assemble %g\n",m->p0[t->p[0]].x);
+            printf("TEST2: model_assemble %i %g\n",i,t->K[0][0].a);
+            printf("TEST2: model_assemble %i %g\n",i,m->p0[t->p[0]].x);
         }
     }
     
@@ -664,20 +659,20 @@ void model_assemble(Model *m)
                 if(i!=j)
                 {
                     m->ngb[t->p[j]].K[ji]=addMat(m->ngb[t->p[j]].K[ji],trnMat(K));
-                	if(test1)
-                	{
-                		sum+=m->ngb[t->p[j]].K[ji].a+m->ngb[t->p[j]].K[ji].b+m->ngb[t->p[j]].K[ji].c+
-                			 m->ngb[t->p[j]].K[ji].d+m->ngb[t->p[j]].K[ji].e+m->ngb[t->p[j]].K[ji].f+
-                			 m->ngb[t->p[j]].K[ji].g+m->ngb[t->p[j]].K[ji].h+m->ngb[t->p[j]].K[ji].i;
-                	}
+                    if(test1)
+                    {
+                        sum+=m->ngb[t->p[j]].K[ji].a+m->ngb[t->p[j]].K[ji].b+m->ngb[t->p[j]].K[ji].c+
+                             m->ngb[t->p[j]].K[ji].d+m->ngb[t->p[j]].K[ji].e+m->ngb[t->p[j]].K[ji].f+
+                             m->ngb[t->p[j]].K[ji].g+m->ngb[t->p[j]].K[ji].h+m->ngb[t->p[j]].K[ji].i;
+                    }
                 }
             }
         if(test2&&l<10)
-        	printf("TEST2: model_assemble %g\n",m->ngb[t->p[0]].K[0].a);
+            printf("TEST2: model_assemble %i %g\n",l,m->ngb[t->p[0]].K[0].a);
     }
     
     if(test1)
-    	printf("TEST1: model_assemble %g\n",sum);
+        printf("TEST1: model_assemble %g\n",sum);
 }    
 void model_externalForces(Model *m, double Tfib, double EfibA)
 /*
@@ -685,17 +680,17 @@ void model_externalForces(Model *m, double Tfib, double EfibA)
  */
 {
     int     i;
-    double	sum=0;
+    double  sum=0;
     
     // fibre elasticity
     for(i=1;i<m->np;i+=2)
     {
-        //m->fext[i]=sca3D(m->p[i],EfibA*(1/nor3D(m->p[i])-1/m->fibre_length[i])); // correct
-        m->fext[i]=sca3D(m->p[i],EfibA*(m->fibre_length[i]/nor3D(m->p[i])-1));	// wrong (kept for testing)
+        m->fext[i]=sca3D(m->p[i],EfibA*(1/nor3D(m->p[i])-1/m->fibre_length[i])); // correct
+        //m->fext[i]=sca3D(m->p[i],EfibA*(m->fibre_length[i]/nor3D(m->p[i])-1));  // wrong (kept for testing)
         if(test1)
-        	sum+=m->fext[i].x+m->fext[i].y+m->fext[i].z;
+            sum+=m->fext[i].x+m->fext[i].y+m->fext[i].z;
         if(test2&&i<10)
-        	printf("TEST2: model_externalForces %g\n",m->fext[i].x);
+            printf("TEST2: model_externalForces %i %g\n",i,m->fext[i].x);
     }
     
     // fibre plasticity
@@ -703,13 +698,13 @@ void model_externalForces(Model *m, double Tfib, double EfibA)
     {
         m->fibre_length[i]+=(nor3D(m->p[i])-m->fibre_length[i])/Tfib;
         if(test1)
-        	sum+=m->fibre_length[i];
+            sum+=m->fibre_length[i];
         if(test2&&i<10)
-        	printf("TEST2: model_externalForces %g\n",m->fibre_length[i]);
+            printf("TEST2: model_externalForces %i %g\n",i,m->fibre_length[i]);
     }
     
     if(test1)
-    	printf("TEST1: model_externalForces %g\n",sum);
+        printf("TEST1: model_externalForces %g\n",sum);
 }
 void  model_configureConjugateGradient(Model *m)
 /*
@@ -725,7 +720,7 @@ void  model_configureConjugateGradient(Model *m)
     int         i,j;
     double3D    b;
     Neighbours  *ngb;
-    double		sum=0;
+    double      sum=0;
     
     for(i=0;i<m->np;i++)
     {
@@ -739,7 +734,9 @@ void  model_configureConjugateGradient(Model *m)
                 ngb->A[j]=addMat(ngb->A[j],(matrix){m->m[i],0,0, 0,m->m[i],0, 0,0,m->m[i]});
             
             if(test1)
-            	sum+=ngb->A[j].a+ngb->A[j].b+ngb->A[j].c+ngb->A[j].d+ngb->A[j].e+ngb->A[j].f+ngb->A[j].g+ngb->A[j].h+ngb->A[j].i;
+                sum+=ngb->A[j].a+ngb->A[j].b+ngb->A[j].c+ngb->A[j].d+ngb->A[j].e+ngb->A[j].f+ngb->A[j].g+ngb->A[j].h+ngb->A[j].i;
+            if(test2&&i<10)
+                printf("TEST2: model_configureConjugateGradient %i detA=%g\n",i,detMat(ngb->A[j]));
         }
         
         // b=M*v +dt*(K'*p-f0+fext)
@@ -755,13 +752,13 @@ void  model_configureConjugateGradient(Model *m)
         m->b[i]=add3D(sca3D(m->v[i],m->m[i]),b);
 
         if(test1)
-         	sum+=m->b[i].x+m->b[i].y+m->b[i].z;
+            sum+=m->b[i].x+m->b[i].y+m->b[i].z;
         if(test2 && i<10)
-        	printf("TEST2: model_configureConjugateGradient %g\n",ngb->K[0].a);
+            printf("TEST2: model_configureConjugateGradient %i %g\n",i,detMat(ngb->K[0]));
     }
-	
-	if(test1)
-		printf("TEST1: model_configureConjugateGradient %g\n",sum);
+    
+    if(test1)
+        printf("TEST1: model_configureConjugateGradient %g\n",sum);
 }
 void model_conjugateGradient(Model *m, int maxiter)
 /*
@@ -773,12 +770,12 @@ void model_conjugateGradient(Model *m, int maxiter)
     double      rold,rnew;
     double3D    Sum;
     double      alpha,beta;
-    double		sum=0;
+    double      sum=0;
     
     
     // 1. initialise p=r=b-A*x
     if(test1)
-    	sum=0;
+        sum=0;
     for(i=0;i<m->np;i++)
     {
         Sum=(double3D){0,0,0};
@@ -787,20 +784,19 @@ void model_conjugateGradient(Model *m, int maxiter)
         m->P[i]=m->R[i]=sub3D(m->b[i],Sum);
         
         if(test1)
-        	sum+=m->P[i].x+m->P[i].y+m->P[i].z;
-        	
-       	if(test2&&i<10)
-       		printf("TEST2: model_conjugateGradient_1.1 %g\n",m->b[i].x);
+            sum+=m->P[i].x+m->P[i].y+m->P[i].z;
+        if(test2&&i<10)
+            printf("TEST2: model_conjugateGradient_1 %i %g\n",i,m->P[i].x+m->P[i].y+m->P[i].z);
     }
     
     // 2. compute the residue rold
     rold=0;
     for(i=0;i<m->np;i++)
-    {
         rold+=dot3D(m->R[i],m->R[i]);
-    }
     if(test1)
-    	sum+=rold;
+        sum+=rold;
+    if(test2)
+        printf("TEST2: model_conjugateGradient_2 %i %g\n",i,rold);
     
     for(k=0;k<maxiter;k++)
     {
@@ -813,18 +809,32 @@ void model_conjugateGradient(Model *m, int maxiter)
             m->Ap[i]=Sum;
             
             if(test1)
-            	sum+=Sum.x+Sum.y+Sum.z;
+                sum+=Sum.x+Sum.y+Sum.z;
+            if(test2 && i<10)
+                printf("TEST2: model_conjugateGradient_3 %i %g\n",i,Sum.x+Sum.y+Sum.z);
         }
-
+    
         // 4. compute alpha=rold/(p'*A*p)
         den=0;
         for(i=0;i<m->np;i++)
+        {
             den+=dot3D(m->P[i],m->Ap[i]);
+            
+            if(test2&&i>m->np-10)
+                printf("TEST2: model_conjugateGradient_4 %i den=%g\n",i,den);
+        }
+        if(den<0)
+        {
+            printf("ERROR: Matrix A is not positive definite (p'Ap<0)\n");
+            return;
+        }
         if(den<1E-10)
             den=1E-10;
         alpha=rold/den;
-		if(test1)
-			sum+=alpha;
+        if(test1)
+            sum+=alpha;
+        if(test2)
+            printf("TEST2: model_conjugateGradient_4 %i alpha=%g, den=%g\n",k,alpha,den);
         
         // 5. update x and r
         for(i=0;i<m->np;i++)
@@ -833,7 +843,9 @@ void model_conjugateGradient(Model *m, int maxiter)
             m->R[i]=sub3D(m->R[i],sca3D(m->Ap[i],alpha));
             
             if(test1)
-            	sum+=m->v[i].x+m->v[i].y+m->v[i].z+m->R[i].x+m->R[i].y+m->R[i].z;
+                sum+=m->v[i].x+m->v[i].y+m->v[i].z+m->R[i].x+m->R[i].y+m->R[i].z;
+            if(test2 && i<10)
+                printf("TEST2: model_conjugateGradient_5 %i %g\n",i,m->v[i].x+m->v[i].y+m->v[i].z+m->R[i].x+m->R[i].y+m->R[i].z);
         }
         
         // 6. compute the new residue rnew, finish if error is small enough
@@ -842,27 +854,33 @@ void model_conjugateGradient(Model *m, int maxiter)
             rnew+=dot3D(m->R[i],m->R[i]);
         if(k>1 && rnew<0.001)
             break;
-		if(test1)
-			sum+=rnew;
+        if(test1)
+            sum+=rnew;
+        if(test2)
+            printf("TEST2: model_conjugateGradient_6 %i %g\n",k,rnew);
         
         // 7. compute beta=rnew/rold
         beta=rnew/rold;
         rold=rnew;
-		if(test1)
-			sum+=beta+rold;
-        
+        if(test1)
+            sum+=beta+rold;
+        if(test2)
+            printf("TEST2: model_conjugateGradient_4 %i %g\n",k,beta+rold);
+       
         // 8. update p
         for(i=0;i<m->np;i++)
         {
             m->P[i]=add3D(m->R[i],sca3D(m->P[i],beta));
             
             if(test1)
-            	sum+=m->P[i].x+m->P[i].y+m->P[i].z;
+                sum+=m->P[i].x+m->P[i].y+m->P[i].z;
+            if(test2 && i<10)
+                printf("TEST2: model_conjugateGradient_8 %i %g\n",i,m->P[i].x+m->P[i].y+m->P[i].z);
         }
     }
     //printf("%i %lf ",k,rnew);    // k=number_iterations, r=residual_error
-	if(test1)
-		printf("TEST1: model_conjugateGradient_8 %g\n",sum);
+    if(test1)
+        printf("TEST1: model_conjugateGradient %g\n",sum);
 }
 void model_updatePosition(Model *m)
 /*
@@ -871,18 +889,18 @@ void model_updatePosition(Model *m)
  */
 {
     int     i;
-    double	sum=0;
+    double  sum=0;
     
     for(i=0;i<m->np;i++)
     {
         m->p[i]=add3D(m->p[i],sca3D(m->v[i],m->dt));
         
         if(test1)
-        	sum+=m->p[i].x+m->p[i].y+m->p[i].z;
+            sum+=m->p[i].x+m->p[i].y+m->p[i].z;
     }
     
     if(test1)
-    	printf("TEST1: model_updatePosition %g\n",sum);
+        printf("TEST1: model_updatePosition %g\n",sum);
 }
 void model_addToHash(Model *m, unsigned int hash, int vertexIndex, int iter)
 /*
@@ -1008,7 +1026,7 @@ int model_collision(Model *m,int iter)
 #pragma mark [ util ]
 void model_save(Model *m, char *path, int surf)
 /*
-	save model cortical layer
+    save model cortical layer
 */
 {
     FILE    *f=fopen(path,"w");
@@ -1071,9 +1089,9 @@ int curvature(Model *m, double *C)//chenlu
     double3D    nn;
     double      absmax;
     int         i;
-    double3D	P,Pa,Pb,Pc;
-    int3D		T;
-    int			NP,NT;
+    double3D    P,Pa,Pb,Pc;
+    int3D       T;
+    int         NP,NT;
         
     NP=m->np/2;
     NT=m->nt/3;
@@ -1083,10 +1101,10 @@ int curvature(Model *m, double *C)//chenlu
     n=(int*)calloc(NP,sizeof(int));
     for(i=0;i<NT;i++)
     {
-		T=(int3D){m->t[3*i].p[1]/2,m->t[3*i].p[0]/2,m->t[3*i].p[2]/2};
-	    Pa=m->p[2*T.a];
-	    Pb=m->p[2*T.b];
-	    Pc=m->p[2*T.c];
+        T=(int3D){m->t[3*i].p[1]/2,m->t[3*i].p[0]/2,m->t[3*i].p[2]/2};
+        Pa=m->p[2*T.a];
+        Pb=m->p[2*T.b];
+        Pc=m->p[2*T.c];
         tmp[T.a]=add3D(tmp[T.a],add3D(Pb,Pc));
         tmp[T.b]=add3D(tmp[T.b],add3D(Pc,Pa));
         tmp[T.c]=add3D(tmp[T.c],add3D(Pa,Pb));
@@ -1096,7 +1114,7 @@ int curvature(Model *m, double *C)//chenlu
     }
     for(i=0;i<NP;i++)
     {
-    	P=m->p[2*i];
+        P=m->p[2*i];
         tmp[i]=sub3D(sca3D(tmp[i],1/(double)n[i]),P);
     }
     
@@ -1104,10 +1122,10 @@ int curvature(Model *m, double *C)//chenlu
     tmp1=(double3D*)calloc(NP,sizeof(double3D));
     for(i=0;i<NT;i++)
     {
-		T=(int3D){m->t[3*i].p[1]/2,m->t[3*i].p[0]/2,m->t[3*i].p[2]/2};
-	    Pa=m->p[2*T.a];
-	    Pb=m->p[2*T.b];
-	    Pc=m->p[2*T.c];
+        T=(int3D){m->t[3*i].p[1]/2,m->t[3*i].p[0]/2,m->t[3*i].p[2]/2};
+        Pa=m->p[2*T.a];
+        Pb=m->p[2*T.b];
+        Pc=m->p[2*T.c];
         nn=cro3D(sub3D(Pb,Pa),sub3D(Pc,Pa));
         nn=sca3D(nn,1/nor3D(nn));
         tmp1[T.a]=add3D(tmp1[T.a],nn);
@@ -1132,22 +1150,22 @@ int curvature(Model *m, double *C)//chenlu
 }
 double foldLength(Model *m, double *C)//chenlu
 {
-    int        	i,j;
-    double    	length=0,a,x;
+    int         i,j;
+    double      length=0,a,x;
     double3D    p0[3];
-    double3D	Pa,Pb,Pc;
-    int3D		T;
-    int			NP,NT;
+    double3D    Pa,Pb,Pc;
+    int3D       T;
+    int         NP,NT;
     
     NP=m->np/2;
     NT=m->nt/3;
     
     for(i=0;i<NT;i++)
     {
-		T=(int3D){m->t[3*i].p[1]/2,m->t[3*i].p[0]/2,m->t[3*i].p[2]/2};
-	    Pa=m->p[2*T.a];
-	    Pb=m->p[2*T.b];
-	    Pc=m->p[2*T.c];
+        T=(int3D){m->t[3*i].p[1]/2,m->t[3*i].p[0]/2,m->t[3*i].p[2]/2};
+        Pa=m->p[2*T.a];
+        Pb=m->p[2*T.b];
+        Pc=m->p[2*T.c];
 
         j=0;
         if(C[T.a]*C[T.b]<0)
@@ -1235,7 +1253,7 @@ int main(int argc, char *argv[])
     double  r;
     double  volume;
     double  surface,initialSurface,targetSurface;
-    double	*data;
+    double  *data;
     double  flength;
     
     verbose=0;
@@ -1407,8 +1425,8 @@ int main(int argc, char *argv[])
         {
             if(output)
             {
-            	sprintf(str,"%s.%i.txt",output,i);
-            	model_save(&m,str,surf);
+                sprintf(str,"%s.%i.txt",output,i);
+                model_save(&m,str,surf);
             }
             break;
         }        
