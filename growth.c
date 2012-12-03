@@ -1200,14 +1200,14 @@ simulate it, save the result, free it\n\
  -i             Mesh that gives the shape of the model surface\n\
  -o             File to save the final mesh\n\
  -Ectx          Young modulus [default: 400000 Pa]\n\
- -Tctx          Plasticity constant of the cortical layer [default: 1500]\n\
- -Efib          Elasticity of the radial fibres [default: 4500]\n\
- -Tfib          Plasticity of the radial fibres [default: 10000]\n\
- -nu            Poisson ratio [default: 0.33]\n\
+ -Tctx          Plasticity constant of the cortical layer [default: 500]\n\
+ -Efib          Elasticity of the radial fibres [default: 4000]\n\
+ -Tfib          Plasticity of the radial fibres [default: 500]\n\
+ -nu            Poisson ratio [default: 0.4]\n\
  -rho           Density of the material (mass/volume) [default: 1000]\n\
- -thickness     Thickness of the cortical layer [default: 0.4]\n\
- -growth        Target surface as a fraction of the initial surface [default: 1.5]\n\
- -Tgrowth       Time constant of the cortical layer growth [default: 100]\n\
+ -thickness     Thickness of the cortical layer [default: 0.15]\n\
+ -growth        Target surface as a fraction of the initial surface [default: 2]\n\
+ -Tgrowth       Time constant of the cortical layer growth [default: 90]\n\
  -niter         Number of iterations [default: 100]\n\
  -surf          Surfaces to save: 1=internal surface, 2=external surface, 3=both [default: 2]\n\
  -step          Save the mesh every 'step' iterations [default: 0]\n\
@@ -1239,13 +1239,13 @@ int main(int argc, char *argv[])
     char    *input,*output=NULL;
     int     niter=100;
     float   Efib=4000;
-    float   Tfib=1000;
+    float   Tfib=500;
     float   Ectx=400000;
-    float   Tctx=1000;
+    float   Tctx=500;
     float   nu=0.4;
     float   rho=1000;
-    float   thickness=0.2;
-    float   growth=1.5;
+    float   thickness=0.15;
+    float   growth=2.0;
     float   Tgrowth=100;
     int     surf=2;
     int     step=0;
@@ -1254,7 +1254,8 @@ int main(int argc, char *argv[])
     double  volume;
     double  surface,initialSurface,targetSurface;
     double  *data;
-    double  flength;
+    double  flength,flength0;
+    int     prevdir,cross0flength;
     
     verbose=0;
     test1=0;
@@ -1366,6 +1367,10 @@ int main(int argc, char *argv[])
     targetSurface=growth*initialSurface;
     printf("VAR: Target_surface %lf\n", targetSurface);
     
+    // zero-crossings in the flength function
+    flength0=0;
+    prevdir=1;
+    
 //=======================================================================================
 // 3. Run simulation
 //=======================================================================================
@@ -1414,7 +1419,21 @@ int main(int argc, char *argv[])
         // compute fold length
         curvature(&m,data);
         flength=foldLength(&m,data);
-
+        
+        // count number of zero-crossings of the flength function
+        if(flength>flength0 && prevdir==-1)
+        {
+            prevdir=1;
+            cross0flength++;
+        }
+        else
+        if(flength<flength0 && prevdir==1)
+        {
+            prevdir=-1;
+            cross0flength++;
+        }
+        flength0=flength;
+        
         // display measurements
         printf("%lf ",surface);
         printf("%lf ",r);
@@ -1459,6 +1478,7 @@ int main(int argc, char *argv[])
 
     printf("VAR: Folding_length %lf\n",flength);
     printf("VAR: Absolute_gyrification %lf\n",exp(log(surface)-2*log(volume)/3.0-log(36*kPi)/3.0));
+    printf("VAR: Folding_length_0crossings %i\n",cross0flength);
 
     if(output)
     {
