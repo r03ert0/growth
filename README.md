@@ -1,4 +1,0 @@
-growth
-======
-
-Growth
